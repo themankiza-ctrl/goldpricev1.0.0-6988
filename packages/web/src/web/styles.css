@@ -1,0 +1,134 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-gold: #f5c518;
+  --color-gold-soft: #ffde5c;
+  --color-gold-deep: #c99a0b;
+  --color-ink: #0a0a0a;
+  --color-panel: #131313;
+  --color-panel2: #1b1b1b;
+  --color-line: #262626;
+  --color-cream: #f7f7f5;
+  --color-muted: #8a8a85;
+  --color-buy: #7fd1a0;
+  --color-warn: #e8994a;
+  --color-danger: #e2564d;
+
+  --radius-card: 22px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    background: #0a0a0a;
+  }
+  body {
+    margin: 0;
+    background: #0a0a0a;
+    color: var(--color-cream);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--color-gold);
+    color: var(--color-ink);
+  }
+  input,
+  select,
+  button {
+    font-family: inherit;
+  }
+  /* Chrome/Safari: kill the spinner on numeric inputs — prices are typed, not stepped */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+@utility display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+@utility panel {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+}
+
+@utility field {
+  width: 100%;
+  background: var(--color-panel2);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  color: var(--color-cream);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.field:focus {
+  border-color: var(--color-gold-deep);
+}
+
+/* --- page load orchestration --- */
+@keyframes gf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: gf-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes gf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+}
+
+.live-dot {
+  animation: gf-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes gf-flash {
+  from {
+    background-color: color-mix(in oklab, #f5c518 16%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.flash {
+  animation: gf-flash 0.7s ease-out;
+}
