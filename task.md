@@ -24,3 +24,11 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - Admin = single password from settings (no Better Auth) — internal tool, one operator
 - Buy side NEVER gets weekend/vol markup (base spot only)
 - Silver 20% PDV, gold investment = exempt
+
+## Embed widget (ugradnja na goldenfeather.rs)
+- `src/web/pages/embed.tsx` — standalone widget bez chrome-a; parametri `theme`, `currency`, `buy=0`, `only=poluga,kovanica,dukat,srebro`.
+- Javlja visinu hostu preko `postMessage({type:"gf-embed-height",height})` + ResizeObserver → nema unutrašnjeg skrola.
+- `styles.css` — dodat `.gf-light` scope (light varijanta tokena).
+- `app.tsx` — `/embed` ruta izvučena van `<Layout>`; ostale rute ostaju u Layout-u.
+- Uputstvo za WordPress: `/home/user/goldenfeather-embed/content.md`.
+- Verifikovano: lint 0 grešaka, build prolazi, `/embed?theme=light` → 200, screenshot potvrđuje render.

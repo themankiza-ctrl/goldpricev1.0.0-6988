@@ -132,3 +132,15 @@
 .flash {
   animation: gf-flash 0.7s ease-out;
 }
+
+/* --- embed widget: light variant for white shop pages --- */
+.gf-light {
+  --color-ink: #ffffff;
+  --color-panel: #ffffff;
+  --color-panel2: #f5f5f2;
+  --color-line: #e5e5e0;
+  --color-cream: #131310;
+  --color-muted: #6b6b63;
+  --color-buy: #1f9d5c;
+  color: #131310;
+}

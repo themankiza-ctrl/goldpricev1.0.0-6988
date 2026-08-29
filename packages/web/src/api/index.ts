@@ -6,6 +6,7 @@ import { products } from "./database/schema";
 import { getPricingContext, priceAll } from "./lib/market";
 import { seedIfEmpty } from "./lib/seed";
 import { admin } from "./routes/admin";
+import { locks } from "./routes/locks";
 import { ping } from "./routes/ping";
 import { prices } from "./routes/prices";
 import { spot } from "./routes/spot";
@@ -14,6 +15,7 @@ export const router = {
   ping,
   spot,
   prices,
+  locks,
   admin,
 };
 

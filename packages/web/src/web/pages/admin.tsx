@@ -7,6 +7,7 @@ import {
   KeyRound,
   Loader2,
   Plug,
+  Lock,
   Save,
   Sliders,
   Trash2,
@@ -23,14 +24,16 @@ import {
   useUpdateSettings,
 } from "../queries/admin";
 import { usePriceHistory, useSnapshotAll, useSpot, useSpotHistory } from "../queries/market";
+import { useLocks, usePurgeLocks, useSetLockStatus } from "../queries/locks";
 import { clock, eur, num, pct, rsd } from "../lib/format";
 import { cn } from "../lib/utils";
 import { StatusPill } from "../components/status-pill";
 
-type Tab = "spot" | "proizvodi" | "pravila" | "istorija" | "feeds";
+type Tab = "spot" | "rezervacije" | "proizvodi" | "pravila" | "istorija" | "feeds";
 
 const TABS: { key: Tab; label: string; icon: typeof Activity }[] = [
   { key: "spot", label: "Spot monitor", icon: Activity },
+  { key: "rezervacije", label: "Rezervacije", icon: Lock },
   { key: "proizvodi", label: "Proizvodi", icon: Database },
   { key: "pravila", label: "Pravila cena", icon: Sliders },
   { key: "istorija", label: "Istorija", icon: Save },
@@ -153,6 +156,7 @@ function Panel({ onLogout }: { onLogout: () => void }) {
 
       <div className="mt-8">
         {tab === "spot" && <SpotTab />}
+        {tab === "rezervacije" && <LocksTab />}
         {tab === "proizvodi" && <ProductsTab />}
         {tab === "pravila" && <RulesTab />}
         {tab === "istorija" && <HistoryTab />}
@@ -620,6 +624,12 @@ function RulesTab() {
       staleAfterSeconds: String(s.staleAfterSeconds),
       feedKey: s.feedKey,
       adminPassword: s.adminPassword,
+      lockEnabled: s.lockEnabled,
+      contactPhone: s.contactPhone,
+      contactEmail: s.contactEmail,
+      lockMinuteOptions: s.lockMinuteOptions,
+      lockDefaultMinutes: String(s.lockDefaultMinutes),
+      lockMaxTotalEur: String(s.lockMaxTotalEur),
     });
   }, [s]);
 
@@ -657,6 +667,12 @@ function RulesTab() {
       staleAfterSeconds: n("staleAfterSeconds"),
       feedKey: t("feedKey"),
       adminPassword: t("adminPassword"),
+      lockEnabled: Boolean(form.lockEnabled),
+      contactPhone: t("contactPhone"),
+      contactEmail: t("contactEmail"),
+      lockMinuteOptions: t("lockMinuteOptions").replace(/\s/g, ""),
+      lockDefaultMinutes: n("lockDefaultMinutes"),
+      lockMaxTotalEur: n("lockMaxTotalEur"),
     });
 
   return (
@@ -834,6 +850,55 @@ function RulesTab() {
                 className="field"
                 value={t("adminPassword")}
                 onChange={(e) => set("adminPassword", e.target.value)}
+              />
+            </Field>
+          </div>
+        </Card>
+
+        <Card
+          title="Zaključavanje cene (rezervacije)"
+          note="Klijent zamrzne objavljenu cenu na kratak rok i ostavi kontakt. Zahtev pada u tab Rezervacije i generiše SMS na tvoj broj."
+          toggle={{ on: Boolean(form.lockEnabled), set: (v) => set("lockEnabled", v) }}
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Telefon za SMS">
+              <input
+                aria-label="Telefon za SMS"
+                className="field"
+                value={t("contactPhone")}
+                onChange={(e) => set("contactPhone", e.target.value)}
+              />
+            </Field>
+            <Field label="Email za kontakt">
+              <input
+                aria-label="Email za kontakt"
+                className="field"
+                value={t("contactEmail")}
+                onChange={(e) => set("contactEmail", e.target.value)}
+              />
+            </Field>
+            <Field label="Trajanja (min, zapetama)">
+              <input
+                aria-label="Trajanja rezervacije u minutima"
+                className="field"
+                value={t("lockMinuteOptions")}
+                onChange={(e) => set("lockMinuteOptions", e.target.value)}
+              />
+            </Field>
+            <Field label="Podrazumevano (min)">
+              <input
+                aria-label="Podrazumevano trajanje"
+                className="field"
+                value={t("lockDefaultMinutes")}
+                onChange={(e) => set("lockDefaultMinutes", e.target.value)}
+              />
+            </Field>
+            <Field label="Maks. iznos bez upita (EUR)">
+              <input
+                aria-label="Maksimalni iznos rezervacije u evrima"
+                className="field"
+                value={t("lockMaxTotalEur")}
+                onChange={(e) => set("lockMaxTotalEur", e.target.value)}
               />
             </Field>
           </div>
@@ -1054,6 +1119,178 @@ function FeedRow({ name, note, url }: { name: string; note: string; url: string 
           {copied ? "Kopirano" : "Kopiraj"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------- rezervacije */
+
+const LOCK_FILTERS: { key: "all" | "aktivan" | "potvrdjen" | "otkazan" | "istekao"; label: string }[] =
+  [
+    { key: "aktivan", label: "Aktivne" },
+    { key: "potvrdjen", label: "Potvrđene" },
+    { key: "otkazan", label: "Otkazane" },
+    { key: "istekao", label: "Istekle" },
+    { key: "all", label: "Sve" },
+  ];
+
+const STATUS_STYLE: Record<string, string> = {
+  aktivan: "bg-gold/15 text-gold border-gold/40",
+  potvrdjen: "bg-buy/15 text-buy border-buy/40",
+  otkazan: "bg-danger/15 text-danger border-danger/40",
+  istekao: "bg-panel2 text-muted border-line",
+};
+
+function LocksTab() {
+  const [filter, setFilter] = useState<"all" | "aktivan" | "potvrdjen" | "otkazan" | "istekao">(
+    "aktivan",
+  );
+  const locks = useLocks(filter);
+  const setStatus = useSetLockStatus();
+  const purge = usePurgeLocks();
+
+  const rows = locks.data?.rows ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="panel flex flex-wrap items-center justify-between gap-4 p-5">
+        <div>
+          <h3 className="display text-lg font-bold">
+            Rezervacije cena
+            {locks.data ? (
+              <span className="num ml-2 text-[13px] font-medium text-gold">
+                {locks.data.openCount} aktivnih
+              </span>
+            ) : null}
+          </h3>
+          <p className="mt-1.5 max-w-xl text-[12px] leading-relaxed text-muted">
+            Svaki zahtev čuva cenu koja je važila u trenutku rezervacije. Kad klijent dođe ili
+            uplati, klikni „Potvrdi". Istekle rezervacije sistem sam obeležava.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {LOCK_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "num rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors",
+                filter === f.key ? "bg-gold text-ink" : "border border-line text-muted",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {locks.isLoading ? (
+        <p className="text-[13px] text-muted">Učitavanje…</p>
+      ) : rows.length === 0 ? (
+        <p className="panel p-6 text-[13px] text-muted">Nema rezervacija u ovoj kategoriji.</p>
+      ) : (
+        <div className="panel overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse">
+              <thead>
+                <tr className="border-b border-line text-left">
+                  {["ŠIFRA", "KLIJENT", "PROIZVOD", "ZAKLJUČANA CENA", "VAŽI DO", "STATUS", ""].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="num px-4 py-3 text-[10px] font-medium tracking-wider text-muted"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((l) => (
+                  <tr key={l.id} className="border-b border-line/60 last:border-0">
+                    <td className="num px-4 py-3 text-[12px] font-semibold text-gold">
+                      {l.ref}
+                      <span className="ml-2 text-[10px] font-normal text-muted">{l.source}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-[12px] font-medium">{l.customerName}</p>
+                      <a
+                        href={`tel:${l.customerPhone}`}
+                        className="num text-[11px] text-muted hover:text-cream"
+                      >
+                        {l.customerPhone}
+                      </a>
+                      {l.note ? <p className="mt-1 text-[11px] text-muted">{l.note}</p> : null}
+                    </td>
+                    <td className="px-4 py-3 text-[12px]">
+                      {l.productName} × {l.quantity}
+                      <span
+                        className={cn(
+                          "num ml-2 text-[10px]",
+                          l.side === "kupovina" ? "text-gold" : "text-buy",
+                        )}
+                      >
+                        {l.side === "kupovina" ? "KUPUJE" : "PRODAJE NAMA"}
+                      </span>
+                    </td>
+                    <td className="num px-4 py-3 text-[12px] font-semibold">
+                      {rsd(l.totalRsd)}
+                      <span className="ml-2 text-[11px] font-normal text-muted">
+                        {eur(l.totalEur)}
+                      </span>
+                    </td>
+                    <td className="num px-4 py-3 text-[11px] text-muted">{clock(l.expiresAt)}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          "num rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                          STATUS_STYLE[l.status] ?? STATUS_STYLE.istekao,
+                        )}
+                      >
+                        {l.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1.5">
+                        {l.status !== "potvrdjen" && (
+                          <button
+                            type="button"
+                            onClick={() => setStatus.mutate({ id: l.id, status: "potvrdjen" })}
+                            className="num rounded-full bg-buy/15 px-3 py-1.5 text-[11px] font-medium text-buy"
+                          >
+                            Potvrdi
+                          </button>
+                        )}
+                        {l.status !== "otkazan" && (
+                          <button
+                            type="button"
+                            onClick={() => setStatus.mutate({ id: l.id, status: "otkazan" })}
+                            className="num rounded-full border border-line px-3 py-1.5 text-[11px] text-muted hover:text-danger"
+                          >
+                            Otkaži
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => purge.mutate({ statuses: ["otkazan", "istekao"] })}
+        disabled={purge.isPending}
+        className="flex items-center gap-2 rounded-full border border-line px-4 py-2 text-[12px] text-muted hover:text-danger disabled:opacity-40"
+      >
+        <Trash2 className="size-3.5" />
+        Očisti istekle i otkazane
+      </button>
     </div>
   );
 }

@@ -75,6 +75,15 @@ export const admin = {
         staleAfterSeconds: z.number().int().min(60).max(86400).optional(),
         feedKey: z.string().min(4).optional(),
         adminPassword: z.string().min(4).optional(),
+        lockEnabled: z.boolean().optional(),
+        contactPhone: z.string().min(6).max(40).optional(),
+        contactEmail: z.string().email().optional(),
+        lockMinuteOptions: z
+          .string()
+          .regex(/^\d+(,\d+)*$/, "Unesi minute razdvojene zapetama")
+          .optional(),
+        lockDefaultMinutes: z.number().int().min(5).max(1440).optional(),
+        lockMaxTotalEur: z.number().min(100).max(1000000).optional(),
       }),
     )
     .handler(async ({ input }) => {

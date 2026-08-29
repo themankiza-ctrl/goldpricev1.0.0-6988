@@ -65,6 +65,42 @@ export const priceHistory = sqliteTable("price_history", {
     .$defaultFn(() => new Date()),
 });
 
+/**
+ * Lead capture + price lock. A client freezes a published sell price for N
+ * minutes; the operator gets the request and confirms or lets it expire.
+ */
+export const priceLocks = sqliteTable("price_locks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Short human reference the client quotes on the phone, e.g. GF-7K3Q. */
+  ref: text("ref").notNull().unique(),
+  productId: integer("product_id").notNull(),
+  sku: text("sku").notNull(),
+  productName: text("product_name").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  /** Locked unit prices at the moment of request. */
+  unitSellEur: real("unit_sell_eur").notNull(),
+  unitSellRsd: real("unit_sell_rsd").notNull(),
+  totalEur: real("total_eur").notNull(),
+  totalRsd: real("total_rsd").notNull(),
+  spotEurPerGram: real("spot_eur_per_gram").notNull(),
+  eurRsdRate: real("eur_rsd_rate").notNull(),
+  /** kupovina | prodaja — client buying from us, or selling to us. */
+  side: text("side").notNull().default("kupovina"),
+  customerName: text("customer_name").notNull(),
+  customerPhone: text("customer_phone").notNull(),
+  customerEmail: text("customer_email"),
+  note: text("note"),
+  lockMinutes: integer("lock_minutes").notNull().default(60),
+  /** aktivan | potvrdjen | otkazan | istekao */
+  status: text("status").notNull().default("aktivan"),
+  /** Where the request came from: sajt | embed | kalkulator */
+  source: text("source").notNull().default("sajt"),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 /** Single-row configuration (id = 1). */
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey(),
@@ -109,6 +145,17 @@ export const settings = sqliteTable("settings", {
   staleAfterSeconds: integer("stale_after_seconds").notNull().default(300),
   feedKey: text("feed_key").notNull().default("gf-feed-key"),
   adminPassword: text("admin_password").notNull().default("zlato2026"),
+
+  // --- Lead capture / zaključavanje cene ---
+  lockEnabled: integer("lock_enabled", { mode: "boolean" }).notNull().default(true),
+  /** Operator phone that receives the generated SMS. */
+  contactPhone: text("contact_phone").notNull().default("+381612813102"),
+  contactEmail: text("contact_email").notNull().default("office@goldenfeather.rs"),
+  /** Allowed lock windows in minutes, comma separated. */
+  lockMinuteOptions: text("lock_minute_options").notNull().default("30,60,360,720"),
+  lockDefaultMinutes: integer("lock_default_minutes").notNull().default(60),
+  /** Max total value (EUR) a client can self-lock; above it we mark as "na upit". */
+  lockMaxTotalEur: real("lock_max_total_eur").notNull().default(20000),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

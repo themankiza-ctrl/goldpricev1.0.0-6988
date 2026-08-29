@@ -4,6 +4,8 @@ import { ArrowUpRight, Clock3, Activity, ShieldAlert, Layers } from "lucide-reac
 import { useSpot, usePriceList } from "../queries/market";
 import { clock, eur, money, num, pct } from "../lib/format";
 import { cn } from "../lib/utils";
+import LockDialog, { type LockTarget } from "../components/lock-dialog";
+import { useLockConfig } from "../queries/locks";
 
 type Currency = "EUR" | "RSD";
 
@@ -195,6 +197,8 @@ function RiskPanel() {
 
 function PriceTable() {
   const list = usePriceList();
+  const lockCfg = useLockConfig();
+  const [lockTarget, setLockTarget] = useState<LockTarget | null>(null);
   const [currency, setCurrency] = useState<Currency>(() => {
     if (typeof window === "undefined") return "RSD";
     return (window.localStorage.getItem("gf-currency") as Currency) || "RSD";
@@ -265,8 +269,11 @@ function PriceTable() {
                   <th className="num px-3 py-3 text-right text-[10px] font-medium tracking-wider text-buy">
                     OTKUP
                   </th>
-                  <th className="num px-5 py-3 text-right text-[10px] font-medium tracking-wider text-muted">
+                  <th className="num px-3 py-3 text-right text-[10px] font-medium tracking-wider text-muted">
                     SPREAD
+                  </th>
+                  <th className="num px-5 py-3 text-right text-[10px] font-medium tracking-wider text-muted">
+                    {lockCfg.data?.enabled ? "REZERVACIJA" : ""}
                   </th>
                 </tr>
               </thead>
@@ -278,7 +285,7 @@ function PriceTable() {
                     <Fragment key={g.key}>
                       <tr className="bg-panel2/60">
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           className="num px-5 py-2 text-[10px] font-medium tracking-wider text-muted"
                         >
                           {g.label.toUpperCase()}
@@ -309,8 +316,35 @@ function PriceTable() {
                           <td className="num px-3 py-3 text-right text-[13px] font-semibold text-buy">
                             {money(currency === "EUR" ? p.buyEur : p.buyRsd, currency)}
                           </td>
-                          <td className="num px-5 py-3 text-right text-[12px] text-muted">
+                          <td className="num px-3 py-3 text-right text-[12px] text-muted">
                             {num(p.spreadPct, 1)}%
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            {lockCfg.data?.enabled && !p.onRequest ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLockTarget({
+                                    sku: p.sku,
+                                    name: p.name,
+                                    sellEur: p.sellEur,
+                                    sellRsd: p.sellRsd,
+                                    buyEur: p.buyEur,
+                                    buyRsd: p.buyRsd,
+                                  })
+                                }
+                                className="num rounded-full border border-gold/40 bg-gold/10 px-3 py-1.5 text-[11px] font-medium text-gold transition-colors hover:bg-gold hover:text-ink"
+                              >
+                                ZAKLJUČAJ
+                              </button>
+                            ) : p.onRequest ? (
+                              <a
+                                href={`tel:${lockCfg.data?.phone ?? ""}`}
+                                className="num rounded-full border border-line px-3 py-1.5 text-[11px] text-muted hover:text-cream"
+                              >
+                                POZOVITE
+                              </a>
+                            ) : null}
                           </td>
                         </tr>
                       ))}
@@ -338,6 +372,15 @@ function PriceTable() {
         volatilnost — sistem vas štiti od preplaćivanja robe dok je berza zatvorena. Za investiciono
         zlato se PDV ne obračunava; srebro sadrži 20% PDV.
       </p>
+
+      {lockTarget && (
+        <LockDialog
+          target={lockTarget}
+          currency={currency}
+          source="sajt"
+          onClose={() => setLockTarget(null)}
+        />
+      )}
     </section>
   );
 }
