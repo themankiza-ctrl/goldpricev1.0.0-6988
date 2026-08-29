@@ -41,7 +41,6 @@ export default function LockDialog({ target, currency, source, onClose }: Props)
   const [minutes, setMinutes] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -69,16 +68,21 @@ export default function LockDialog({ target, currency, source, onClose }: Props)
   const created = create.data?.lock;
   const options = cfg.data?.minuteOptions ?? [30, 60, 360, 720];
 
-  const smsHref = created
-    ? `sms:${create.data?.phone}?body=${encodeURIComponent(
-        [
-          `ZAKLJUCAVANJE CENE ${created.ref}`,
-          `${created.side === "kupovina" ? "Kupujem" : "Prodajem"}: ${created.productName} x${created.quantity}`,
-          `Cena: ${Math.round(created.totalRsd).toLocaleString("sr-RS")} RSD (${created.totalEur.toFixed(2)} EUR)`,
-          `Vazi do: ${new Date(created.expiresAt).toLocaleString("sr-RS")}`,
-          `Ime: ${created.customerName}, tel: ${created.customerPhone}`,
-        ].join("\n"),
-      )}`
+  const message = created
+    ? [
+        `ZAKLJUCAVANJE CENE ${created.ref}`,
+        `${created.side === "kupovina" ? "Kupujem" : "Prodajem"}: ${created.productName} x${created.quantity}`,
+        `Cena: ${Math.round(created.totalRsd).toLocaleString("sr-RS")} RSD (${created.totalEur.toFixed(2)} EUR)`,
+        `Vazi do: ${new Date(created.expiresAt).toLocaleString("sr-RS")}`,
+        `Ime: ${created.customerName}, tel: ${created.customerPhone}`,
+      ].join("\n")
+    : "";
+  const opPhone = create.data?.phone ?? cfg.data?.phone ?? "";
+  const opDigits = opPhone.replace(/\D/g, "");
+  const smsHref = created ? `sms:${opPhone}?body=${encodeURIComponent(message)}` : "#";
+  const waHref = created ? `https://wa.me/${opDigits}?text=${encodeURIComponent(message)}` : "#";
+  const viberHref = created
+    ? `viber://chat?number=${encodeURIComponent(`+${opDigits}`)}&draft=${encodeURIComponent(message)}`
     : "#";
 
   const canSubmit =
@@ -132,9 +136,33 @@ export default function LockDialog({ target, currency, source, onClose }: Props)
             >
               POŠALJI SMS POTVRDU
             </a>
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href={viberHref}
+                className="num flex items-center justify-center gap-2 rounded-full py-3 text-center text-[12px] font-semibold text-white"
+                style={{ backgroundColor: "#7360F2" }}
+              >
+                VIBER
+              </a>
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noreferrer"
+                className="num flex items-center justify-center gap-2 rounded-full py-3 text-center text-[12px] font-semibold text-white"
+                style={{ backgroundColor: "#25D366" }}
+              >
+                WHATSAPP
+              </a>
+            </div>
+            <a
+              href={`tel:${opPhone}`}
+              className="num block w-full rounded-full border border-line py-2.5 text-center text-[12px] text-cream"
+            >
+              POZOVI {opPhone}
+            </a>
             <p className="text-[11px] leading-relaxed text-muted">
-              SMS ide na {create.data?.phone}. Ako ste na računaru, samo nas pozovite i pročitajte
-              šifru — zahtev je već zabeležen u sistemu.
+              Poruka ide na {opPhone} — SMS, Viber ili WhatsApp, kako vam je lakše. Zahtev je već
+              zabeležen u sistemu, možete i samo da pozovete i pročitate šifru.
             </p>
             <button
               type="button"
@@ -157,7 +185,6 @@ export default function LockDialog({ target, currency, source, onClose }: Props)
                 lockMinutes: minutes,
                 customerName: name,
                 customerPhone: phone,
-                customerEmail: email || undefined,
                 note: note || undefined,
                 source,
               });
@@ -252,14 +279,6 @@ export default function LockDialog({ target, currency, source, onClose }: Props)
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 required
-              />
-              <input
-                aria-label="Email (opciono)"
-                className="field w-full"
-                placeholder="Email (opciono)"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
               />
               <input
                 aria-label="Napomena (opciono)"

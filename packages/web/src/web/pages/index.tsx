@@ -6,6 +6,7 @@ import { clock, eur, money, num, pct } from "../lib/format";
 import { cn } from "../lib/utils";
 import LockDialog, { type LockTarget } from "../components/lock-dialog";
 import ProductCards, { type CardItem } from "../components/product-cards";
+import BrandSlider from "../components/brand-slider";
 import { useLockConfig } from "../queries/locks";
 
 type Currency = "EUR" | "RSD";
@@ -445,6 +446,7 @@ export default function Index() {
     <>
       <Hero />
       <RiskPanel />
+      <BrandSlider />
       <PriceTable />
     </>
   );

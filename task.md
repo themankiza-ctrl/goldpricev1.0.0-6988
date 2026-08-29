@@ -53,3 +53,9 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - index.tsx: novi prekidač Kartice / Tabela (localStorage `gf-view`, default Kartice); tabela ostaje nepromenjena.
 - Verifikovano: lint 0, build OK, prices/list vraća manufacturer/imageUrl/blurb za sve proizvode, screenshot potvrđuje 4 kartice u redu sa slikama.
 - Embed widget ostaje tabelarni.
+
+## Rezervacije preko telefona + slider proizvođača (29.08.2026)
+- lock-dialog.tsx: email polje uklonjeno (rezervacija ide isključivo preko broja telefona); posle uspešne rezervacije tri kanala — SMS, VIBER (`viber://chat?number=...&draft=...`) i WHATSAPP (`https://wa.me/<digits>?text=...`) sa istom unaprijed napisanom porukom, plus dugme POZOVI.
+- Novi `components/brand-slider.tsx`: auto slider (5 s, pauza na hover, klik na točkice), po jedan slajd za svakog proizvođača — Argor-Heraeus, Valcambi, Heraeus, Münze Österreich; slika + logo na beloj podlozi + zemlja + kratak tekst + CTA ka cenovniku.
+- index.tsx: slider ubačen između risk panela i cenovnika.
+- Verifikovano: lint 0, build OK, screenshot potvrđuje slajder i logo.
