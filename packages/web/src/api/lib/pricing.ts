@@ -168,6 +168,11 @@ export type ProductPrice = {
   /** sell/buy gap as % of the sell price. */
   spreadPct: number;
   pricePerGramEur: number;
+  /** Card metadata (refinery, logo, photo, blurb) — null until filled in admin. */
+  manufacturer: string | null;
+  brandLogo: string | null;
+  imageUrl: string | null;
+  blurb: string | null;
 };
 
 export function priceProduct(
@@ -222,5 +227,9 @@ export function priceProduct(
     buyRsd,
     spreadPct: sellEur > 0 ? ((sellEur - buyEur) / sellEur) * 100 : 0,
     pricePerGramEur: fineWeightG > 0 ? sellEur / fineWeightG : 0,
+    manufacturer: product.manufacturer ?? null,
+    brandLogo: product.brandLogo ?? null,
+    imageUrl: product.imageUrl ?? null,
+    blurb: product.blurb ?? null,
   };
 }

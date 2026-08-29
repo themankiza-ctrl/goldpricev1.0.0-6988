@@ -32,3 +32,24 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - `app.tsx` — `/embed` ruta izvučena van `<Layout>`; ostale rute ostaju u Layout-u.
 - Uputstvo za WordPress: `/home/user/goldenfeather-embed/content.md`.
 - Verifikovano: lint 0 grešaka, build prolazi, `/embed?theme=light` → 200, screenshot potvrđuje render.
+
+## Zaključavanje cene / rezervacije (29.08.2026)
+- schema.ts: nova tabela `price_locks` (ref GF-XXXX, proizvod, količina, zamrznute cene EUR+RSD, spot i kurs u trenutku, strana kupovina/prodaja, podaci klijenta, trajanje, status, source, expiresAt) — db:push OK.
+- settings: `lockEnabled`, `contactPhone` (+381612813102), `contactEmail` (office@goldenfeather.rs — potvrditi), `lockMinuteOptions` (30,60,360,720), `lockDefaultMinutes` (60), `lockMaxTotalEur` (20000).
+- routes/locks.ts: `config` (javno), `create` (javno, cena se PONOVO računa na serveru — klijent ne može da podmetne cenu; limiti: trajanje iz liste, proizvod aktivan i nije NA UPIT, total <= lockMaxTotalEur), `byRef` (javna provera statusa), `list`/`setStatus`/`purge` (admin ključ). `expireStale()` automatski prebacuje istekle u `istekao`.
+- queries/locks.ts + components/lock-dialog.tsx: modal (kupujem/prodajem, količina, trajanje, ime/telefon/email/napomena) → posle uspeha prikazuje šifru GF-XXXX, rok i `sms:` link sa unaprijed napisanom porukom na contactPhone.
+- pages/index.tsx: kolona REZERVACIJA (ZAKLJUČAJ / POZOVITE za NA UPIT).
+- pages/embed.tsx: novi parametar `lock` (`lock=0` skriva CTA) + kolona CENA sa istim dugmetom → widget hvata lead-ove.
+- pages/admin.tsx: novi tab "Rezervacije" (filteri po statusu, brojač aktivnih, Potvrdi/Otkaži, čišćenje isteklih) + kartica "Zaključavanje cene" u Pravilima cena.
+- Verifikovano: lint 0, build OK, `locks/config` 200, `locks/create` kreira GF-XQTL, `locks/list` sa x-admin-key vraća redove; screenshot `/` i `/embed?theme=light` pokazuju novu kolonu.
+- Git: commit-ovan i push-ovan na github.com/themankiza-ctrl/goldpricev1.0.0-6988 (branch main).
+
+## Kartice proizvoda (29.08.2026)
+- schema.ts: `products` dobio nullable kolone `manufacturer`, `brand_logo`, `image_url`, `blurb` — db:push OK.
+- seed.ts: META mapa za svih 18 SKU-ova (proizvođač, logo, slika, srpski opis 2-3 rečenice) + backfill koji popunjava samo prazna polja, nikad ne prepisuje operaterove izmene.
+- pricing.ts: `ProductPrice` i `priceProduct()` vraćaju nova 4 polja (prices/list ih automatski prosleđuje).
+- Slike u `packages/web/public/images/products/` (7 fotografija, 700x700, bela podloga) i `public/images/brands/` (4 logotipa: Argor-Heraeus, Valcambi, Heraeus, Münze Österreich).
+- Nova komponenta `components/product-cards.tsx`: grid 4 u redu (xl), slika 4:3, logo brenda, pill sa masom / NA UPIT, spec traka MASA/FINOĆA/METAL, opis (3 linije), PRODAJA + OTKUP, spread i PDV, dugme ZAKLJUČAJ CENU (ili POZOVITE NAS za NA UPIT).
+- index.tsx: novi prekidač Kartice / Tabela (localStorage `gf-view`, default Kartice); tabela ostaje nepromenjena.
+- Verifikovano: lint 0, build OK, prices/list vraća manufacturer/imageUrl/blurb za sve proizvode, screenshot potvrđuje 4 kartice u redu sa slikama.
+- Embed widget ostaje tabelarni.

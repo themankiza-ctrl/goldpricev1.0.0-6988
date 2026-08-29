@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { db } from "../database";
 import { products, settings } from "../database/schema";
 
@@ -35,6 +36,48 @@ const CATALOGUE = [
   { sku: "GF-AG-WP-1OZ", name: "Wiener Philharmoniker srebro 1 unca", category: "srebro", metal: "XAG", grossWeightG: 31.1034768, fineness: 999, sellMarginPct: 0.2528, buyMarginPct: -0.15, vatPct: 0.2, sortOrder: 300 },
 ];
 
+/**
+ * Card metadata: refinery/mint, logo, product photo and a short Serbian blurb.
+ * Kept separate from pricing so it can be backfilled onto an existing database.
+ */
+const BRAND = {
+  valcambi: { manufacturer: "Valcambi Suisse", brandLogo: "/images/brands/valcambi.png" },
+  argor: { manufacturer: "Argor-Heraeus", brandLogo: "/images/brands/argor-heraeus.png" },
+  heraeus: { manufacturer: "Heraeus", brandLogo: "/images/brands/heraeus.png" },
+  munze: { manufacturer: "Münze Österreich", brandLogo: "/images/brands/munze-osterreich.png" },
+} as const;
+
+const IMG = {
+  malaPlocica: "/images/products/valcambi-mala-plocica.jpg",
+  kinebar: "/images/products/argor-kinebar.jpg",
+  heraeusPoluga: "/images/products/heraeus-poluga.jpg",
+  livena: "/images/products/valcambi-livena-poluga.jpg",
+  wpZlato: "/images/products/wp-zlato.jpg",
+  wpSrebro: "/images/products/wp-srebro.jpg",
+  dukat: "/images/products/dukat-franc-jozef.jpg",
+} as const;
+
+const META: Record<string, { manufacturer: string; brandLogo: string; imageUrl: string; blurb: string }> = {
+  "GF-BAR-1G": { ...BRAND.valcambi, imageUrl: IMG.malaPlocica, blurb: "Najmanji format investicionog zlata, finoće 999,9 — ulaz u zlato bez velikog početnog kapitala. Dolazi zavarena u originalnoj Valcambi kartici sa serijskim brojem i certifikatom. Idealna za poklon i za postepeno građenje rezerve gram po gram." },
+  "GF-BAR-2G": { ...BRAND.valcambi, imageUrl: IMG.malaPlocica, blurb: "Pločica od 2 g u zavarenoj kartici sa certifikatom, finoća 999,9. Nešto niža marža po gramu od jednogramske, a zadržava maksimalnu deljivost rezerve. Najčešći izbor za prvi ozbiljniji korak u investiciono zlato." },
+  "GF-BAR-5G": { ...BRAND.valcambi, imageUrl: IMG.malaPlocica, blurb: "Pet grama zlata finoće 999,9 u originalnom zaštitnom pakovanju sa serijskim brojem. Dobar balans između cene po gramu i mogućnosti da rezervu prodaješ u malim delovima. Lako se čuva i lako preprodaje na celom tržištu EU." },
+  "GF-BAR-10G": { ...BRAND.argor, imageUrl: IMG.kinebar, blurb: "Argor-Heraeus Kinebar® — švajcarska poluga od 10 g sa holografskom zaštitom od falsifikovanja, finoća 999,9. Zavarena u certifikovanoj kartici sa potpisom ovlašćenog probirača. Jedan od najlikvidnijih formata na evropskom tržištu." },
+  "GF-BAR-20G": { ...BRAND.argor, imageUrl: IMG.kinebar, blurb: "Dvadeset grama švajcarskog zlata finoće 999,9 iz Argor-Heraeus rafinerije, LBMA Good Delivery standard. Kinebar holografska zaštita čini je jednom od najsigurnijih poluga za privatno čuvanje. Marža po gramu je znatno niža nego kod malih gramaža." },
+  "GF-BAR-1OZ": { ...BRAND.heraeus, imageUrl: IMG.heraeusPoluga, blurb: "Troj unca (31,1035 g) zlata finoće 999,9 — svetski standardna jedinica u kojoj se kotira berzanska cena. Zbog toga se najlakše upoređuje sa spotom i najbrže prodaje bilo gde u svetu. Dolazi u originalnom zavarenom pakovanju sa certifikatom." },
+  "GF-BAR-50G": { ...BRAND.heraeus, imageUrl: IMG.heraeusPoluga, blurb: "Pedeset grama zlata finoće 999,9 iz nemačke Heraeus rafinerije, sa serijskim brojem i certifikatom. Prelazak u srednje gramaže gde marža po gramu značajno pada. Namenjena kupcu koji gradi rezervu, a ne trguje na kratko." },
+  "GF-BAR-100G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Sto grama investicionog zlata finoće 999,9 — jedan od najboljih odnosa cene po gramu i praktičnosti čuvanja. Livena poluga sa utisnutim serijskim brojem, težinom i finoćom, u zaštitnom pakovanju. Standardni format u sefovima i privatnim trezorima." },
+  "GF-BAR-250G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Poluga od 250 g finoće 999,9, LBMA priznata rafinerija. Marža po gramu je među najnižim u ponudi, pa je namenjena većim, dugoročnim ulaganjima. Preporučujemo čuvanje u sefu ili trezoru sa osiguranjem." },
+  "GF-BAR-500G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Pola kilograma zlata finoće 999,9 — format za ozbiljne portfolio pozicije. Cena se ugovara telefonom jer zavisi od trenutne dostupnosti i berzanskog kursa u momentu uplate. Isporuka uz zapisnik i certifikat rafinerije." },
+  "GF-BAR-1000G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Kilogramska poluga, finoća 999,9 — najniža marža po gramu u celoj ponudi. Isključivo po dogovoru: cena i rok isporuke se fiksiraju direktno sa nama, uz zaključenje po aktuelnom spotu. Standard za institucionalne i porodične rezerve." },
+  "GF-WP-1-10OZ": { ...BRAND.munze, imageUrl: IMG.wpZlato, blurb: "Wiener Philharmoniker 1/10 unce (3,11 g) — najprodavanija zlatna kovanica u Evropi, finoća 999,9. Zvanično sredstvo plaćanja Republike Austrije, pa uživa dodatno poverenje na tržištu. Najpristupačniji način da se uđe u zlatne kovanice." },
+  "GF-FJ-MALI": { ...BRAND.munze, imageUrl: IMG.dukat, blurb: "Mali dukat Franc Jozef, 3,49 g finoće 986,0 — klasika srpskog i austrijskog tržišta zlata. Tradicionalni poklon za svadbe, krštenja i rođenja, uz stalnu tražnju i lak otkup. Kupuje se i prodaje po ceni koja prati berzansku vrednost zlata." },
+  "GF-WP-1-4OZ": { ...BRAND.munze, imageUrl: IMG.wpZlato, blurb: "Četvrtina unce (7,78 g) austrijske Filharmonije, finoća 999,9, kovana u Münze Österreich. Motiv orgulja Zlatne sale Bečke filharmonije poznat je kolekcionarima i investitorima širom sveta. Odličan kompromis između deljivosti i cene po gramu." },
+  "GF-FJ-VELIKI": { ...BRAND.munze, imageUrl: IMG.dukat, blurb: "Veliki dukat Franc Jozef, 13,96 g finoće 986,0 — četvorostruki dukat, najtraženiji format na domaćem tržištu. Kombinuje investicionu i numizmatičku vrednost, sa vekovnom reputacijom. Uvek likvidan: otkupljujemo ga po dnevnoj berzanskoj ceni." },
+  "GF-WP-1-2OZ": { ...BRAND.munze, imageUrl: IMG.wpZlato, blurb: "Pola unce (15,55 g) zlata finoće 999,9 u najpoznatijoj evropskoj kovanici. Nominalna vrednost u evrima i garancija austrijske državne kovnice. Format za kupca koji želi veću poziciju, a da zadrži mogućnost delimične prodaje." },
+  "GF-WP-1OZ": { ...BRAND.munze, imageUrl: IMG.wpZlato, blurb: "Jedna troj unca (31,1035 g) finoće 999,9 — referentni format zlatnih kovanica u svetu. Filharmonija se prodaje i otkupljuje na svim većim tržištima, uz najmanji spread u klasi kovanica. Isporučuje se u zaštitnoj kapsuli ili originalnom tubusu." },
+  "GF-AG-WP-1OZ": { ...BRAND.munze, imageUrl: IMG.wpSrebro, blurb: "Srebrna Filharmonija, 1 unca finoće 999,0 — najlikvidnija srebrna kovanica u Evropi. Na srebro se, za razliku od investicionog zlata, obračunava PDV od 20%, što je već uračunato u prikazanu cenu. Popularna kao ulaz u plemenite metale sa malim budžetom." },
+};
+
 export async function seedIfEmpty() {
   const existing = await db.select({ sku: products.sku }).from(products).limit(1);
   if (existing.length === 0) {
@@ -49,6 +92,28 @@ export async function seedIfEmpty() {
     );
     console.log(`[seed] inserted ${CATALOGUE.length} products`);
   }
+
+  // Backfill card metadata onto rows that predate it (never overwrites operator edits).
+  const rows = await db
+    .select({ sku: products.sku, manufacturer: products.manufacturer, blurb: products.blurb })
+    .from(products);
+  let patched = 0;
+  for (const row of rows) {
+    const meta = META[row.sku];
+    if (!meta) continue;
+    if (row.manufacturer && row.blurb) continue;
+    await db
+      .update(products)
+      .set({
+        manufacturer: row.manufacturer ?? meta.manufacturer,
+        brandLogo: meta.brandLogo,
+        imageUrl: meta.imageUrl,
+        blurb: row.blurb ?? meta.blurb,
+      })
+      .where(eq(products.sku, row.sku));
+    patched += 1;
+  }
+  if (patched > 0) console.log(`[seed] backfilled card metadata on ${patched} products`);
 
   const cfg = await db.select({ id: settings.id }).from(settings).limit(1);
   if (cfg.length === 0) {

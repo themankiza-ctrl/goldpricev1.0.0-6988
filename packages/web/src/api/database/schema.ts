@@ -19,6 +19,14 @@ export const products = sqliteTable("products", {
   buyMarginPct: real("buy_margin_pct").notNull(),
   /** 0 for investment gold (VAT exempt), 0.20 for silver. */
   vatPct: real("vat_pct").notNull().default(0),
+  /** Refinery / mint, e.g. "Argor-Heraeus". Shown on the product card. */
+  manufacturer: text("manufacturer"),
+  /** Manufacturer logo path under /images/brands/. */
+  brandLogo: text("brand_logo"),
+  /** Product photo path under /images/products/. */
+  imageUrl: text("image_url"),
+  /** 2-3 sentence Serbian sales blurb for the card. */
+  blurb: text("blurb"),
   /** Price on request only — never published to feeds. */
   onRequest: integer("on_request", { mode: "boolean" }).notNull().default(false),
   active: integer("active", { mode: "boolean" }).notNull().default(true),

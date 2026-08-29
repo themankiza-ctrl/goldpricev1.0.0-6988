@@ -5,9 +5,11 @@ import { useSpot, usePriceList } from "../queries/market";
 import { clock, eur, money, num, pct } from "../lib/format";
 import { cn } from "../lib/utils";
 import LockDialog, { type LockTarget } from "../components/lock-dialog";
+import ProductCards, { type CardItem } from "../components/product-cards";
 import { useLockConfig } from "../queries/locks";
 
 type Currency = "EUR" | "RSD";
+type View = "kartice" | "tabela";
 
 const ICONS = { weekend: Clock3, volatility: Activity, gap: ShieldAlert } as const;
 
@@ -204,9 +206,18 @@ function PriceTable() {
     return (window.localStorage.getItem("gf-currency") as Currency) || "RSD";
   });
 
+  const [view, setView] = useState<View>(() => {
+    if (typeof window === "undefined") return "kartice";
+    return (window.localStorage.getItem("gf-view") as View) || "kartice";
+  });
+
   useEffect(() => {
     window.localStorage.setItem("gf-currency", currency);
   }, [currency]);
+
+  useEffect(() => {
+    window.localStorage.setItem("gf-view", view);
+  }, [view]);
 
   const groups = [
     { key: "poluga", label: "Zlatne poluge i pločice" },
@@ -224,6 +235,22 @@ function PriceTable() {
             Prodaja i otkup
           </h2>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex rounded-full border border-line bg-panel p-1">
+          {(["kartice", "tabela"] as View[]).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={cn(
+                "num rounded-full px-4 py-1.5 text-[12px] font-medium transition-colors",
+                view === v ? "bg-cream text-ink" : "text-muted hover:text-cream",
+              )}
+            >
+              {v === "kartice" ? "Kartice" : "Tabela"}
+            </button>
+          ))}
+        </div>
         <div className="flex rounded-full border border-line bg-panel p-1">
           {(["RSD", "EUR"] as Currency[]).map((c) => (
             <button
@@ -239,6 +266,7 @@ function PriceTable() {
             </button>
           ))}
         </div>
+        </div>
       </div>
 
       {list.isLoading ? (
@@ -251,17 +279,47 @@ function PriceTable() {
         <div className="panel mt-6 border-danger/40 p-6 text-sm text-danger">
           Feed je nedostupan — cenovnik se ne može prikazati.
         </div>
+      ) : view === "kartice" ? (
+        <div className="mt-2">
+          {groups.map((g) => {
+            const items = ((list.data?.items ?? []) as CardItem[]).filter(
+              (i) => i.category === g.key,
+            );
+            if (items.length === 0) return null;
+            return (
+              <div key={g.key} className="mt-8 first:mt-4">
+                <p className="num text-[11px] font-medium tracking-wider text-muted">
+                  {g.label.toUpperCase()}
+                </p>
+                <ProductCards
+                  items={items}
+                  currency={currency}
+                  lockEnabled={Boolean(lockCfg.data?.enabled)}
+                  phone={lockCfg.data?.phone}
+                  onLock={setLockTarget}
+                />
+              </div>
+            );
+          })}
+          <div className="num panel mt-8 flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-[11px] text-muted">
+            <span>
+              Baza: {eur(list.data?.baseEurPerGram ?? 0)}/g · prodajna baza:{" "}
+              {eur(list.data?.sellEurPerGram ?? 0)}/g
+            </span>
+            <span>
+              1 € = {num(list.data?.eurRsdMiddle ?? 0, 4)} RSD ·{" "}
+              {list.data ? clock(list.data.updatedAt) : "—"}
+            </span>
+          </div>
+        </div>
       ) : (
         <div className="panel mt-6 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse">
+            <table className="w-full min-w-[620px] border-collapse">
               <thead>
                 <tr className="border-b border-line text-left">
                   <th className="num px-5 py-3 text-[10px] font-medium tracking-wider text-muted">
                     PROIZVOD
-                  </th>
-                  <th className="num px-3 py-3 text-right text-[10px] font-medium tracking-wider text-muted">
-                    FINO ZLATO
                   </th>
                   <th className="num px-3 py-3 text-right text-[10px] font-medium tracking-wider text-gold">
                     PRODAJA
@@ -285,7 +343,7 @@ function PriceTable() {
                     <Fragment key={g.key}>
                       <tr className="bg-panel2/60">
                         <td
-                          colSpan={6}
+                          colSpan={5}
                           className="num px-5 py-2 text-[10px] font-medium tracking-wider text-muted"
                         >
                           {g.label.toUpperCase()}
@@ -297,23 +355,20 @@ function PriceTable() {
                           className="rise border-b border-line/60 last:border-0 hover:bg-panel2/40"
                           style={{ animationDelay: `${idx * 20}ms` }}
                         >
-                          <td className="px-5 py-3">
-                            <p className="text-[13px] font-medium">{p.name}</p>
+                          <td className="px-5 py-3.5">
+                            <p className="text-[14px] font-medium">{p.name}</p>
                             <p className="num text-[10px] text-muted">
                               {p.sku} · finoća {num(p.fineness, 1)}
                             </p>
                           </td>
-                          <td className="num px-3 py-3 text-right text-[12px] text-muted">
-                            {num(p.fineWeightG, 4)} g
-                          </td>
-                          <td className="num px-3 py-3 text-right text-[13px] font-semibold text-gold">
+                          <td className="num px-3 py-3.5 text-right text-[14px] font-semibold text-gold">
                             {p.onRequest ? (
                               <span className="text-[11px] text-muted">NA UPIT</span>
                             ) : (
                               money(currency === "EUR" ? p.sellEur : p.sellRsd, currency)
                             )}
                           </td>
-                          <td className="num px-3 py-3 text-right text-[13px] font-semibold text-buy">
+                          <td className="num px-3 py-3.5 text-right text-[14px] font-semibold text-buy">
                             {money(currency === "EUR" ? p.buyEur : p.buyRsd, currency)}
                           </td>
                           <td className="num px-3 py-3 text-right text-[12px] text-muted">
