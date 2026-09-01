@@ -158,7 +158,7 @@ export const settings = sqliteTable("settings", {
   lockEnabled: integer("lock_enabled", { mode: "boolean" }).notNull().default(true),
   /** Operator phone that receives the generated SMS. */
   contactPhone: text("contact_phone").notNull().default("+381621047693"),
-  contactEmail: text("contact_email").notNull().default("office@goldenfeather.rs"),
+  contactEmail: text("contact_email").notNull().default("office@prodajazlata.com"),
   /** Allowed lock windows in minutes, comma separated. */
   lockMinuteOptions: text("lock_minute_options").notNull().default("30,60,360,720"),
   lockDefaultMinutes: integer("lock_default_minutes").notNull().default(60),

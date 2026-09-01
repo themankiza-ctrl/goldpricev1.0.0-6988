@@ -35,7 +35,7 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 
 ## Zaključavanje cene / rezervacije (29.08.2026)
 - schema.ts: nova tabela `price_locks` (ref GF-XXXX, proizvod, količina, zamrznute cene EUR+RSD, spot i kurs u trenutku, strana kupovina/prodaja, podaci klijenta, trajanje, status, source, expiresAt) — db:push OK.
-- settings: `lockEnabled`, `contactPhone` (+381621047693), `contactEmail` (office@goldenfeather.rs — potvrditi), `lockMinuteOptions` (30,60,360,720), `lockDefaultMinutes` (60), `lockMaxTotalEur` (20000).
+- settings: `lockEnabled`, `contactPhone` (+381621047693), `contactEmail` (office@prodajazlata.com — potvrdio operater 01.09.2026), `lockMinuteOptions` (30,60,360,720), `lockDefaultMinutes` (60), `lockMaxTotalEur` (20000).
 - routes/locks.ts: `config` (javno), `create` (javno, cena se PONOVO računa na serveru — klijent ne može da podmetne cenu; limiti: trajanje iz liste, proizvod aktivan i nije NA UPIT, total <= lockMaxTotalEur), `byRef` (javna provera statusa), `list`/`setStatus`/`purge` (admin ključ). `expireStale()` automatski prebacuje istekle u `istekao`.
 - queries/locks.ts + components/lock-dialog.tsx: modal (kupujem/prodajem, količina, trajanje, ime/telefon/email/napomena) → posle uspeha prikazuje šifru GF-XXXX, rok i `sms:` link sa unaprijed napisanom porukom na contactPhone.
 - pages/index.tsx: kolona REZERVACIJA (ZAKLJUČAJ / POZOVITE za NA UPIT).
