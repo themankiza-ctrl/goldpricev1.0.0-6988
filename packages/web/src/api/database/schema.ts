@@ -154,7 +154,7 @@ export const settings = sqliteTable("settings", {
   refreshSeconds: integer("refresh_seconds").notNull().default(60),
   staleAfterSeconds: integer("stale_after_seconds").notNull().default(300),
   feedKey: text("feed_key").notNull().default("gf-feed-key"),
-  adminPassword: text("admin_password").notNull().default("zlato2026"),
+  adminPassword: text("admin_password").notNull().default("666444"),
 
   // --- Lead capture / zaključavanje cene ---
   lockEnabled: integer("lock_enabled", { mode: "boolean" }).notNull().default(true),

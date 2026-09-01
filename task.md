@@ -18,7 +18,7 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - gold-api.com XAU 4617.60 USD, EUR/USD 1.1662, NBS EUR/RSD 117.3838 — status LIVE
 - /api/feed/prices.json?key=gf-feed-key -> 18 proizvoda
 - /api/feed/woocommerce.csv -> CSV sa RSD cenama
-- admin.settings sa x-admin-key: zlato2026 -> 200
+- admin.settings sa x-admin-key: 666444 -> 200
 
 ## Decisions
 - Admin = single password from settings (no Better Auth) — internal tool, one operator
@@ -81,3 +81,10 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 ## Meni u zaglavlju vidljiv i na telefonu (01.09.2026)
 - components/layout.tsx: nav (Cenovnik / Kalkulator / Admin) bio `hidden sm:flex` — na telefonu i u uzem preview-u se nije prikazivao. Sada je uvek vidljiv, sa manjim paddingom i fontom na malim ekranima; naziv "GOLDEN FEATHER" se skriva ispod 420px da meni ima mesta.
 - Verifikovano: lint 0, build OK, screenshot na 390px sirine pokazuje sva tri dugmeta.
+
+## Meni bez "Cenovnik" + nova admin lozinka (01.09.2026)
+- layout.tsx: "Cenovnik" izbacen iz menija (naslovna je i dalje dostupna klikom na logo). Meni sada: Kalkulator, Admin.
+- Admin lozinka promenjena na 666444 (default u schema.ts + azuriran red u Turso bazi). Verifikovano: `admin/login` sa 666444 -> ok:true, stara lozinka -> 401.
+- Napomena: posle promene lozinke treba se ponovo prijaviti u /admin (stari kljuc u browseru vise ne radi).
+- Dokumentacija (task.md, goldenfeather-embed/content.md) azurirana na novu lozinku.
+- Verifikovano: lint 0, build OK, screenshot zaglavlja potvrdjuje novi meni.

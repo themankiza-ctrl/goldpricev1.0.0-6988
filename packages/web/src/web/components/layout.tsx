@@ -5,7 +5,6 @@ import { StatusPill } from "./status-pill";
 import { useSpot } from "../queries/market";
 
 const NAV = [
-  { href: "/", label: "Cenovnik" },
   { href: "/kalkulator", label: "Kalkulator" },
   { href: "/admin", label: "Admin" },
 ];
