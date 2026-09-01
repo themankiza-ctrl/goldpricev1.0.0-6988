@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Phone, Lock } from "lucide-react";
 import { money, num } from "../lib/format";
 import { cn } from "../lib/utils";
@@ -21,6 +22,7 @@ export type CardItem = {
   manufacturer: string | null;
   brandLogo: string | null;
   imageUrl: string | null;
+  gallery?: string[];
   blurb: string | null;
 };
 
@@ -36,6 +38,60 @@ function massLabel(grossWeightG: number) {
   return MASS_LABEL[key] ?? `${num(grossWeightG, grossWeightG < 10 ? 2 : 0)} g`;
 }
 
+/**
+ * Auto-rotating product photo. Frames cross-fade every 3.5s, staggered per card
+ * so the whole grid does not flip at once, and paused while hovered.
+ */
+function CardSlider({ frames, alt, delayMs }: { frames: string[]; alt: string; delayMs: number }) {
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused || frames.length < 2) return;
+    const start = window.setTimeout(() => {
+      setActive((i) => (i + 1) % frames.length);
+    }, 3500 + delayMs);
+    return () => window.clearTimeout(start);
+  }, [active, paused, frames.length, delayMs]);
+
+  return (
+    <div
+      className="group/slider relative size-full"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {frames.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt={alt}
+          loading={i === 0 ? "eager" : "lazy"}
+          className={cn(
+            "absolute inset-0 size-full object-contain p-4 transition-opacity duration-700",
+            i === active ? "opacity-100" : "opacity-0",
+          )}
+        />
+      ))}
+      {frames.length > 1 && (
+        <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+          {frames.map((src, i) => (
+            <button
+              key={src}
+              type="button"
+              aria-label={`Slika ${i + 1}`}
+              onClick={() => setActive(i)}
+              className={cn(
+                "h-1.5 rounded-full transition-all",
+                i === active ? "w-4 bg-ink/70" : "w-1.5 bg-ink/25 hover:bg-ink/45",
+              )}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Spec({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
@@ -43,6 +99,12 @@ function Spec({ label, value }: { label: string; value: string }) {
       <p className="num mt-0.5 truncate text-[12px] font-medium text-cream">{value}</p>
     </div>
   );
+}
+
+/** Slider frames: gallery when present, otherwise the single photo. */
+function frames(p: CardItem) {
+  const list = p.gallery && p.gallery.length > 0 ? p.gallery : p.imageUrl ? [p.imageUrl] : [];
+  return list.filter(Boolean);
 }
 
 export default function ProductCards({
@@ -67,12 +129,11 @@ export default function ProductCards({
           style={{ animationDelay: `${Math.min(idx, 12) * 35}ms` }}
         >
           <div className="relative aspect-4/3 overflow-hidden bg-white">
-            {p.imageUrl ? (
-              <img
-                src={p.imageUrl}
+            {frames(p).length > 0 ? (
+              <CardSlider
+                frames={frames(p)}
                 alt={p.name}
-                loading="lazy"
-                className="size-full object-contain p-4 transition-transform duration-500 group-hover:scale-[1.04]"
+                delayMs={(idx % 4) * 550}
               />
             ) : (
               <div className="num flex size-full items-center justify-center text-[11px] text-ink/40">

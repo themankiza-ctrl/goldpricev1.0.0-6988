@@ -68,3 +68,12 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - queries/market.ts: `useSpot` i `usePriceList` osvezavaju na 15 s (bilo 30 s).
 - Napomena: prilozeni public-apis .zip nije sadrzao README sa spiskom API-ja (samo scripts/ i licenca), pa je izvor izabran rucno.
 - Verifikovano: lint 0, build OK, `/` 200, `spot/current` → LIVE, screenshot potvrdjuje da RISK ENGINE sekcije nema a slider i kartice rade.
+
+## Auto-slider slika u svakoj kartici (01.09.2026)
+- 9 novih fotografija ubaceno u `public/images/products/` (normalizovane na 800x800, bela podloga): argor-2g/20g/50g/1oz, valcambi-250g, valcambi-blister-mala, valcambi-50g-blister, heraeus-blister, munze-plocica.
+- schema.ts: `products` dobio nullable kolonu `gallery` (putanje razdvojene zapetama) — db:push OK.
+- seed.ts: `GALLERY` mapa po SKU-u za sve poluge/plocice + backfill koji popunjava `gallery` samo ako je prazna (nikad ne prepisuje operaterove izmene). Prvi kadar je uvek `imageUrl`.
+- pricing.ts: `ProductPrice.gallery: string[]` (parsira listu iz baze).
+- components/product-cards.tsx: novi `CardSlider` — kadrovi se cross-fade smenjuju svakih 3,5 s, staggered po kartici (idx % 4 * 550 ms) da se cela mreza ne prevrce istovremeno, pauza na hover, tackice za rucno prebacivanje. Kartice bez galerije prikazuju jednu sliku bez tackica.
+- Kovanice i dukati za sada imaju po jednu fotografiju (nema dodatnih slika) — slider se automatski gasi kad ima 1 kadar.
+- Verifikovano: lint 0, build OK, `/` 200, `prices/list` vraca po 3 kadra za poluge, screenshot potvrdjuje slider i tackice u karticama.

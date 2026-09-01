@@ -172,6 +172,8 @@ export type ProductPrice = {
   manufacturer: string | null;
   brandLogo: string | null;
   imageUrl: string | null;
+  /** Card slider frames (imageUrl first). Empty when the product has one photo. */
+  gallery: string[];
   blurb: string | null;
 };
 
@@ -230,6 +232,10 @@ export function priceProduct(
     manufacturer: product.manufacturer ?? null,
     brandLogo: product.brandLogo ?? null,
     imageUrl: product.imageUrl ?? null,
+    gallery: (product.gallery ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
     blurb: product.blurb ?? null,
   };
 }

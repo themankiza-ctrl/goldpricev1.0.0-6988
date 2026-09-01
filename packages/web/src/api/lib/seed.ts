@@ -55,7 +55,31 @@ const IMG = {
   wpZlato: "/images/products/wp-zlato.jpg",
   wpSrebro: "/images/products/wp-srebro.jpg",
   dukat: "/images/products/dukat-franc-jozef.jpg",
+  argor2g: "/images/products/argor-2g.jpg",
+  argor20g: "/images/products/argor-20g.jpg",
+  argor50g: "/images/products/argor-50g.jpg",
+  argor1oz: "/images/products/argor-1oz.jpg",
+  valcambi250g: "/images/products/valcambi-250g.jpg",
+  valcambiBlister: "/images/products/valcambi-blister-mala.jpg",
+  valcambi50gBlister: "/images/products/valcambi-50g-blister.jpg",
+  heraeusBlister: "/images/products/heraeus-blister.jpg",
+  munzePlocica: "/images/products/munze-plocica.jpg",
 } as const;
+
+/** Extra card-slider photos per SKU (first frame is always imageUrl). */
+const GALLERY: Record<string, string[]> = {
+  "GF-BAR-1G": [IMG.valcambiBlister, IMG.munzePlocica],
+  "GF-BAR-2G": [IMG.argor2g, IMG.valcambiBlister],
+  "GF-BAR-5G": [IMG.valcambiBlister, IMG.munzePlocica],
+  "GF-BAR-10G": [IMG.heraeusBlister, IMG.valcambiBlister],
+  "GF-BAR-20G": [IMG.argor20g, IMG.heraeusBlister],
+  "GF-BAR-1OZ": [IMG.argor1oz, IMG.valcambi50gBlister],
+  "GF-BAR-50G": [IMG.argor50g, IMG.valcambi50gBlister],
+  "GF-BAR-100G": [IMG.valcambi250g, IMG.valcambi50gBlister],
+  "GF-BAR-250G": [IMG.valcambi250g, IMG.argor50g],
+  "GF-BAR-500G": [IMG.valcambi250g],
+  "GF-BAR-1000G": [IMG.valcambi250g],
+};
 
 const META: Record<string, { manufacturer: string; brandLogo: string; imageUrl: string; blurb: string }> = {
   "GF-BAR-1G": { ...BRAND.valcambi, imageUrl: IMG.malaPlocica, blurb: "Najmanji format investicionog zlata, finoće 999,9 — ulaz u zlato bez velikog početnog kapitala. Dolazi zavarena u originalnoj Valcambi kartici sa serijskim brojem i certifikatom. Idealna za poklon i za postepeno građenje rezerve gram po gram." },
@@ -95,20 +119,32 @@ export async function seedIfEmpty() {
 
   // Backfill card metadata onto rows that predate it (never overwrites operator edits).
   const rows = await db
-    .select({ sku: products.sku, manufacturer: products.manufacturer, blurb: products.blurb })
+    .select({
+      sku: products.sku,
+      manufacturer: products.manufacturer,
+      blurb: products.blurb,
+      gallery: products.gallery,
+      imageUrl: products.imageUrl,
+    })
     .from(products);
   let patched = 0;
   for (const row of rows) {
     const meta = META[row.sku];
     if (!meta) continue;
-    if (row.manufacturer && row.blurb) continue;
+    const extra = GALLERY[row.sku];
+    const galleryValue = extra
+      ? [row.imageUrl ?? meta.imageUrl, ...extra].filter((v, i, a) => a.indexOf(v) === i).join(",")
+      : null;
+    const needsGallery = Boolean(galleryValue) && !row.gallery;
+    if (row.manufacturer && row.blurb && !needsGallery) continue;
     await db
       .update(products)
       .set({
         manufacturer: row.manufacturer ?? meta.manufacturer,
         brandLogo: meta.brandLogo,
-        imageUrl: meta.imageUrl,
+        imageUrl: row.imageUrl ?? meta.imageUrl,
         blurb: row.blurb ?? meta.blurb,
+        gallery: row.gallery ?? galleryValue,
       })
       .where(eq(products.sku, row.sku));
     patched += 1;

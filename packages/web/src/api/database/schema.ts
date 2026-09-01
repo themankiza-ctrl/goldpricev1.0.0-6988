@@ -25,6 +25,8 @@ export const products = sqliteTable("products", {
   brandLogo: text("brand_logo"),
   /** Product photo path under /images/products/. */
   imageUrl: text("image_url"),
+  /** Extra photos for the card slider, comma-separated paths under /images/products/. */
+  gallery: text("gallery"),
   /** 2-3 sentence Serbian sales blurb for the card. */
   blurb: text("blurb"),
   /** Price on request only — never published to feeds. */
