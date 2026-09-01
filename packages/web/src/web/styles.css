@@ -144,3 +144,15 @@
   --color-buy: #1f9d5c;
   color: #131310;
 }
+
+/* --- Made with Runable badge: premesteno u donji levi ugao --- */
+a[data-runable-badge] {
+  right: auto !important;
+  left: 20px !important;
+  bottom: 20px !important;
+  opacity: 0.75;
+}
+
+a[data-runable-badge]:hover {
+  opacity: 1;
+}

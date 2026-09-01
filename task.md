@@ -88,3 +88,9 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - Napomena: posle promene lozinke treba se ponovo prijaviti u /admin (stari kljuc u browseru vise ne radi).
 - Dokumentacija (task.md, goldenfeather-embed/content.md) azurirana na novu lozinku.
 - Verifikovano: lint 0, build OK, screenshot zaglavlja potvrdjuje novi meni.
+
+## Runda: pomeranje "Made with Runable" bedza
+- Bedz je sada u donjem levom uglu (bio je donji desni, preko cenovnika i futera).
+- Uradjeno preko CSS pravila u `packages/web/src/web/styles.css` (`a[data-runable-badge]`), bez diranja node_modules.
+- Bedz je malo providniji (75%), na prelaz misem pun.
+- Lint i build cisti, provereno screenshotom.
