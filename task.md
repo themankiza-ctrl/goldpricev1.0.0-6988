@@ -94,3 +94,14 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - Uradjeno preko CSS pravila u `packages/web/src/web/styles.css` (`a[data-runable-badge]`), bez diranja node_modules.
 - Bedz je malo providniji (75%), na prelaz misem pun.
 - Lint i build cisti, provereno screenshotom.
+
+## Runda: marze prebacene na "insignitus" racunicu
+- Sa www.insignitus.rs/shop izvucena njihova lestvica marzi (premija na spot po gramazi + otkup kao % ispod prodajne cene).
+- Nove marze u bazi i u seed.ts:
+  1g +20%, 2g +13.5%, 5g +9.3%, 10g +6%, 20g +5%, 1oz +5%, 50g +4.4%, 100g +3.55%, 250g +3.5%, 500g +3.4%, 1kg +3%.
+  Dukati: mali FJ +11.35%, veliki FJ +8.2%. Kovanice: WP 1/10 +11%, 1/4 +8.5%, 1/2 +7%, 1oz +6.3%.
+- Otkup se sada racuna kao kod njih: 5% ispod prodajne za male gramaze, 4% do 20g-1oz, 3% za 50-100g, 2.5% preko 250g,
+  6% za mali dukat, 5% za veliki. U bazi je to prevedeno u procenat u odnosu na spot.
+- Srebro (GF-AG-WP-1OZ) nije dirano jer ga insignitus nema u ponudi.
+- Refresh spota spusten sa 60 na 30 sekundi.
+- Preostala razlika u odnosu na njih (~1.7%) dolazi od rizik-doplate za volatilnost (1.5%) i prodajnog kursa EUR/RSD.
