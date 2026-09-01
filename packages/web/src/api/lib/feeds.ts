@@ -60,6 +60,15 @@ export function fetchXauUsd() {
         return (std.bid + std.ask) / 2;
       },
     },
+    {
+      source: "yahoo finance (COMEX GC=F)",
+      run: async () => {
+        const d = await getJson<{
+          chart: { result: { meta: { regularMarketPrice: number } }[] };
+        }>("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d");
+        return d.chart.result[0]!.meta.regularMarketPrice;
+      },
+    },
   ]);
 }
 
@@ -83,6 +92,15 @@ export function fetchXagUsd() {
         const std = prices.find((p) => p.spreadProfile === "standard") ?? prices[0];
         if (!std) throw new Error("no quote");
         return (std.bid + std.ask) / 2;
+      },
+    },
+    {
+      source: "yahoo finance (COMEX SI=F)",
+      run: async () => {
+        const d = await getJson<{
+          chart: { result: { meta: { regularMarketPrice: number } }[] };
+        }>("https://query1.finance.yahoo.com/v8/finance/chart/SI=F?interval=1m&range=1d");
+        return d.chart.result[0]!.meta.regularMarketPrice;
       },
     },
   ]);

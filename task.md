@@ -35,7 +35,7 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 
 ## Zaključavanje cene / rezervacije (29.08.2026)
 - schema.ts: nova tabela `price_locks` (ref GF-XXXX, proizvod, količina, zamrznute cene EUR+RSD, spot i kurs u trenutku, strana kupovina/prodaja, podaci klijenta, trajanje, status, source, expiresAt) — db:push OK.
-- settings: `lockEnabled`, `contactPhone` (+381612813102), `contactEmail` (office@goldenfeather.rs — potvrditi), `lockMinuteOptions` (30,60,360,720), `lockDefaultMinutes` (60), `lockMaxTotalEur` (20000).
+- settings: `lockEnabled`, `contactPhone` (+381621047693), `contactEmail` (office@goldenfeather.rs — potvrditi), `lockMinuteOptions` (30,60,360,720), `lockDefaultMinutes` (60), `lockMaxTotalEur` (20000).
 - routes/locks.ts: `config` (javno), `create` (javno, cena se PONOVO računa na serveru — klijent ne može da podmetne cenu; limiti: trajanje iz liste, proizvod aktivan i nije NA UPIT, total <= lockMaxTotalEur), `byRef` (javna provera statusa), `list`/`setStatus`/`purge` (admin ključ). `expireStale()` automatski prebacuje istekle u `istekao`.
 - queries/locks.ts + components/lock-dialog.tsx: modal (kupujem/prodajem, količina, trajanje, ime/telefon/email/napomena) → posle uspeha prikazuje šifru GF-XXXX, rok i `sms:` link sa unaprijed napisanom porukom na contactPhone.
 - pages/index.tsx: kolona REZERVACIJA (ZAKLJUČAJ / POZOVITE za NA UPIT).
@@ -59,3 +59,12 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - Novi `components/brand-slider.tsx`: auto slider (5 s, pauza na hover, klik na točkice), po jedan slajd za svakog proizvođača — Argor-Heraeus, Valcambi, Heraeus, Münze Österreich; slika + logo na beloj podlozi + zemlja + kratak tekst + CTA ka cenovniku.
 - index.tsx: slider ubačen između risk panela i cenovnika.
 - Verifikovano: lint 0, build OK, screenshot potvrđuje slajder i logo.
+
+## Izbacen risk panel + novi telefon + Yahoo spot izvor (01.09.2026)
+- pages/index.tsx: cela sekcija RISK ENGINE (`RiskPanel`) i njen mount izbaceni; ociscen import (`ArrowUpRight`, `clock/eur/money/num`, `ICONS` uklonjen). Hero i dalje koristi `useSpot()`.
+- VAZNO: pravila (vikend / volatilnost / gap) i dalje rade u pricing engine-u i menjaju se u /admin → Pravila cena — sa sajta je izbacen samo prikaz.
+- schema.ts: default `contactPhone` = +381621047693; postojeci red u Turso bazi azuriran preko `admin/updateSettings` (verifikovano `locks/config` → "+381621047693"). SMS/Viber/WhatsApp linkovi u lock-dialog-u automatski koriste novi broj.
+- feeds.ts: dodat treci live izvor — Yahoo Finance COMEX (`GC=F` za zlato, `SI=F` za srebro). Lanac: gold-api.com → Swissquote → Yahoo Finance → poslednji snapshot (STALE).
+- queries/market.ts: `useSpot` i `usePriceList` osvezavaju na 15 s (bilo 30 s).
+- Napomena: prilozeni public-apis .zip nije sadrzao README sa spiskom API-ja (samo scripts/ i licenca), pa je izvor izabran rucno.
+- Verifikovano: lint 0, build OK, `/` 200, `spot/current` → LIVE, screenshot potvrdjuje da RISK ENGINE sekcije nema a slider i kartice rade.

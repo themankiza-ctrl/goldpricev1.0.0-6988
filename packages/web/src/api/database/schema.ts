@@ -157,7 +157,7 @@ export const settings = sqliteTable("settings", {
   // --- Lead capture / zaključavanje cene ---
   lockEnabled: integer("lock_enabled", { mode: "boolean" }).notNull().default(true),
   /** Operator phone that receives the generated SMS. */
-  contactPhone: text("contact_phone").notNull().default("+381612813102"),
+  contactPhone: text("contact_phone").notNull().default("+381621047693"),
   contactEmail: text("contact_email").notNull().default("office@goldenfeather.rs"),
   /** Allowed lock windows in minutes, comma separated. */
   lockMinuteOptions: text("lock_minute_options").notNull().default("30,60,360,720"),

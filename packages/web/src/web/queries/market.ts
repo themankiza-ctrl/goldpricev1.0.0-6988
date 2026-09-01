@@ -5,7 +5,7 @@ import { orpc } from "../lib/api";
 export function useSpot() {
   return useQuery(
     orpc.spot.current.queryOptions({
-      refetchInterval: 30_000,
+      refetchInterval: 15_000,
       staleTime: 15_000,
     }),
   );
@@ -18,7 +18,7 @@ export function useSpotHistory(hours: number) {
 export function usePriceList() {
   return useQuery(
     orpc.prices.list.queryOptions({
-      refetchInterval: 30_000,
+      refetchInterval: 15_000,
       staleTime: 15_000,
     }),
   );

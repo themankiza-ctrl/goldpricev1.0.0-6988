@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowUpRight, Clock3, Activity, ShieldAlert, Layers } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useSpot, usePriceList } from "../queries/market";
-import { clock, eur, money, num, pct } from "../lib/format";
+import { clock, eur, money, num } from "../lib/format";
 import { cn } from "../lib/utils";
 import LockDialog, { type LockTarget } from "../components/lock-dialog";
 import ProductCards, { type CardItem } from "../components/product-cards";
@@ -11,8 +11,6 @@ import { useLockConfig } from "../queries/locks";
 
 type Currency = "EUR" | "RSD";
 type View = "kartice" | "tabela";
-
-const ICONS = { weekend: Clock3, volatility: Activity, gap: ShieldAlert } as const;
 
 function useFlashOnChange(value: number | undefined) {
   const prev = useRef(value);
@@ -135,66 +133,6 @@ function Row({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] tracking-wider text-ink/50">{label}</p>
       <p className="font-medium">{value}</p>
     </div>
-  );
-}
-
-function RiskPanel() {
-  const spot = useSpot();
-  const d = spot.data?.data;
-  if (!d) return null;
-
-  return (
-    <section className="mx-auto max-w-[1200px] px-6 pt-16">
-      <div className="flex items-end justify-between gap-6">
-        <div>
-          <p className="num text-[11px] tracking-wider text-muted">RISK ENGINE</p>
-          <h2 className="display mt-2 text-[clamp(1.75rem,4vw,2.75rem)] font-bold">
-            Marža se prilagođava.
-            <span className="block text-cream/30">Otkup nikad ne.</span>
-          </h2>
-        </div>
-        <div className="hidden text-right sm:block">
-          <p className="num text-[11px] tracking-wider text-muted">UKUPNA KOREKCIJA</p>
-          <p className="num text-3xl font-bold text-gold">+{pct(d.totalModifierPct)}</p>
-        </div>
-      </div>
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        {d.modifiers.map((m) => {
-          const Icon = ICONS[m.key as keyof typeof ICONS] ?? Layers;
-          return (
-            <div
-              key={m.key}
-              className={cn(
-                "panel p-5 transition-colors",
-                m.active && "border-gold/40 bg-gold/[0.04]",
-              )}
-            >
-              <div className="flex items-start justify-between">
-                <span
-                  className={cn(
-                    "grid size-10 place-items-center rounded-xl bg-panel2",
-                    m.active && "bg-gold/15",
-                  )}
-                >
-                  <Icon className={cn("size-[18px]", m.active ? "text-gold" : "text-muted")} />
-                </span>
-                <span
-                  className={cn(
-                    "num rounded-full px-2.5 py-1 text-[11px] font-medium",
-                    m.active ? "bg-gold text-ink" : "bg-panel2 text-muted",
-                  )}
-                >
-                  {m.key === "gap" ? (m.active ? "HOLD" : "OK") : `+${pct(m.pct)}`}
-                </span>
-              </div>
-              <p className="mt-4 text-[14px] font-semibold">{m.label}</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted">{m.note}</p>
-            </div>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -445,7 +383,6 @@ export default function Index() {
   return (
     <>
       <Hero />
-      <RiskPanel />
       <BrandSlider />
       <PriceTable />
     </>
