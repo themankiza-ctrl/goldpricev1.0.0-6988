@@ -18,20 +18,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-ink">
       <header className="sticky top-0 z-40 border-b border-line/80 bg-ink/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-6">
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/" className="flex shrink-0 items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-full bg-gold">
               <Feather className="size-4 text-ink" strokeWidth={2.5} />
             </span>
-            <span className="display text-[15px] font-bold text-cream">GOLDEN FEATHER</span>
+            <span className="display hidden text-[15px] font-bold text-cream min-[420px]:inline">
+              GOLDEN FEATHER
+            </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 sm:flex">
+          {/* Always visible — also on phones and inside narrow embeds. */}
+          <nav className="flex items-center gap-0.5 sm:gap-1">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  "rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors",
+                  "rounded-full px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors sm:px-3.5 sm:text-[13px]",
                   location === item.href
                     ? "bg-panel2 text-cream"
                     : "text-muted hover:text-cream",

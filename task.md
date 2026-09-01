@@ -77,3 +77,7 @@ App: /home/user/goldprice (managed template, web only, port 4200)
 - components/product-cards.tsx: novi `CardSlider` — kadrovi se cross-fade smenjuju svakih 3,5 s, staggered po kartici (idx % 4 * 550 ms) da se cela mreza ne prevrce istovremeno, pauza na hover, tackice za rucno prebacivanje. Kartice bez galerije prikazuju jednu sliku bez tackica.
 - Kovanice i dukati za sada imaju po jednu fotografiju (nema dodatnih slika) — slider se automatski gasi kad ima 1 kadar.
 - Verifikovano: lint 0, build OK, `/` 200, `prices/list` vraca po 3 kadra za poluge, screenshot potvrdjuje slider i tackice u karticama.
+
+## Meni u zaglavlju vidljiv i na telefonu (01.09.2026)
+- components/layout.tsx: nav (Cenovnik / Kalkulator / Admin) bio `hidden sm:flex` — na telefonu i u uzem preview-u se nije prikazivao. Sada je uvek vidljiv, sa manjim paddingom i fontom na malim ekranima; naziv "GOLDEN FEATHER" se skriva ispod 420px da meni ima mesta.
+- Verifikovano: lint 0, build OK, screenshot na 390px sirine pokazuje sva tri dugmeta.
