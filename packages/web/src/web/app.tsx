@@ -10,8 +10,15 @@ import BlogPost from "./pages/blog-post";
 import { Layout } from "./components/layout";
 import { Provider } from "./components/provider";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
+import { useEffect } from "react";
+import { initTracking } from "./lib/tracking";
 
 function App() {
+  // Google tag se učitava odmah, da uhvati gclid iz adrese oglasa.
+  useEffect(() => {
+    initTracking();
+  }, []);
+
   return (
     <Provider>
       <Switch>

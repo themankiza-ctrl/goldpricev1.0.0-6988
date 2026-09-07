@@ -3,6 +3,7 @@ import { Phone, Lock } from "lucide-react";
 import { money, num } from "../lib/format";
 import { cn } from "../lib/utils";
 import type { LockTarget } from "./lock-dialog";
+import { trackCall } from "../lib/tracking";
 
 export type CardItem = {
   sku: string;
@@ -232,6 +233,7 @@ export default function ProductCards({
               ) : (
                 <a
                   href={`tel:${phone ?? ""}`}
+                  onClick={() => trackCall("kartica-proizvoda")}
                   className="num mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-line px-3 py-2.5 text-[11px] font-semibold tracking-wider text-muted transition-colors hover:border-gold/40 hover:text-cream"
                 >
                   <Phone className="size-3.5" /> POZOVITE NAS

@@ -4,6 +4,7 @@ import { useLockConfig } from "../queries/locks";
 import LockDialog, { type LockTarget } from "../components/lock-dialog";
 import { money, num, timeAgo } from "../lib/format";
 import { cn } from "../lib/utils";
+import { trackCall } from "../lib/tracking";
 
 type Currency = "EUR" | "RSD";
 
@@ -184,6 +185,7 @@ export default function Embed() {
                             {p.onRequest ? (
                               <a
                                 href={`tel:${lockCfg.data?.phone ?? ""}`}
+                                onClick={() => trackCall("embed")}
                                 className="num text-[10px] text-muted underline"
                               >
                                 POZOVITE

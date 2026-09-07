@@ -7,6 +7,7 @@ import { money, num, clock } from "../lib/format";
 import { cn } from "../lib/utils";
 import LockDialog, { type LockTarget } from "../components/lock-dialog";
 import { useSeo } from "../lib/seo";
+import { trackCall } from "../lib/tracking";
 
 type Currency = "EUR" | "RSD";
 
@@ -91,6 +92,7 @@ export default function Zakljucaj() {
             </a>
             <a
               href={`tel:${phone}`}
+              onClick={() => trackCall("zakljucaj-hero")}
               className="inline-flex items-center gap-2 rounded-full border border-ink/25 px-5 py-3 text-[13px] font-semibold text-ink transition-colors hover:bg-ink/5"
             >
               <Phone className="size-4" /> Pozovi
@@ -193,6 +195,7 @@ export default function Zakljucaj() {
                       ) : (
                         <a
                           href={`tel:${phone}`}
+                          onClick={() => trackCall("zakljucaj-tabela")}
                           className="num rounded-full border border-line px-3 py-1.5 text-[11px] text-muted hover:text-cream"
                         >
                           POZOVITE

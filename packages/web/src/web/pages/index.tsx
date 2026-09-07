@@ -8,6 +8,7 @@ import LockDialog, { type LockTarget } from "../components/lock-dialog";
 import ProductCards, { type CardItem } from "../components/product-cards";
 import BrandSlider from "../components/brand-slider";
 import { useLockConfig } from "../queries/locks";
+import { trackCall } from "../lib/tracking";
 
 type Currency = "EUR" | "RSD";
 type View = "kartice" | "tabela";
@@ -334,6 +335,7 @@ function PriceTable() {
                             ) : p.onRequest ? (
                               <a
                                 href={`tel:${lockCfg.data?.phone ?? ""}`}
+                                onClick={() => trackCall("naslovna-tabela")}
                                 className="num rounded-full border border-line px-3 py-1.5 text-[11px] text-muted hover:text-cream"
                               >
                                 POZOVITE

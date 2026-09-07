@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCreateLock, useLockConfig } from "../queries/locks";
 import { money } from "../lib/format";
 import { cn } from "../lib/utils";
+import { trackCall, trackLock } from "../lib/tracking";
 
 type Currency = "EUR" | "RSD";
 
@@ -67,6 +68,19 @@ export default function LockDialog({ target, currency, source, onClose }: Props)
 
   const created = create.data?.lock;
   const options = cfg.data?.minuteOptions ?? [30, 60, 360, 720];
+
+  // Konverzija se šalje tačno jednom, kada server potvrdi rezervaciju.
+  const reported = useRef<string | null>(null);
+  useEffect(() => {
+    if (!created || reported.current === created.ref) return;
+    reported.current = created.ref;
+    trackLock({
+      value: currency === "EUR" ? created.totalEur : created.totalRsd,
+      currency,
+      reference: created.ref,
+      source,
+    });
+  }, [created, currency, source]);
 
   const message = created
     ? [
@@ -156,6 +170,7 @@ export default function LockDialog({ target, currency, source, onClose }: Props)
             </div>
             <a
               href={`tel:${opPhone}`}
+              onClick={() => trackCall(`${source}-potvrda`)}
               className="num block w-full rounded-full border border-line py-2.5 text-center text-[12px] text-cream"
             >
               POZOVI {opPhone}

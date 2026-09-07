@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Phone, Mail, MapPin, ArrowUpRight } from "lucide-react";
 import { useLockConfig } from "../queries/locks";
 import { useSeo } from "../lib/seo";
+import { trackCall } from "../lib/tracking";
 
 const ADDRESS = "Bulevar Mihajla Pupina 10D/55, Yu Biznis centar, Novi Beograd 11077";
 const MAPS = "https://www.google.com/maps/search/?api=1&query=Bulevar+Mihajla+Pupina+10D+Novi+Beograd";
@@ -38,6 +39,7 @@ export default function Kontakt() {
               <p className="num text-[11px] tracking-wider text-muted">TELEFON</p>
               <a
                 href={`tel:${phone}`}
+                onClick={() => trackCall("kontakt")}
                 className="num display mt-1 block text-[24px] font-bold text-cream hover:text-gold"
               >
                 {phonePretty}
