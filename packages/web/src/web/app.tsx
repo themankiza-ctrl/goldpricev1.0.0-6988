@@ -3,6 +3,10 @@ import Index from "./pages/index";
 import Kalkulator from "./pages/kalkulator";
 import Admin from "./pages/admin";
 import Embed from "./pages/embed";
+import Zakljucaj from "./pages/zakljucaj";
+import Kontakt from "./pages/kontakt";
+import Blog from "./pages/blog";
+import BlogPost from "./pages/blog-post";
 import { Layout } from "./components/layout";
 import { Provider } from "./components/provider";
 import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
@@ -18,6 +22,10 @@ function App() {
             <Switch>
               <Route path="/" component={Index} />
               <Route path="/kalkulator" component={Kalkulator} />
+              <Route path="/zakljucaj" component={Zakljucaj} />
+              <Route path="/kontakt" component={Kontakt} />
+              <Route path="/blog" component={Blog} />
+              <Route path="/blog/:slug" component={BlogPost} />
               <Route path="/admin" component={Admin} />
               <Route>
                 <div className="mx-auto max-w-[1200px] px-6 py-32">

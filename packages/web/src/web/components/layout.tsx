@@ -5,8 +5,11 @@ import { StatusPill } from "./status-pill";
 import { useSpot } from "../queries/market";
 
 const NAV = [
-  { href: "/kalkulator", label: "Kalkulator" },
-  { href: "/admin", label: "Admin" },
+  { href: "/kalkulator", label: "Kalkulator", small: true },
+  { href: "/zakljucaj", label: "Zaključaj", small: true },
+  { href: "/blog", label: "Blog", small: true },
+  { href: "/kontakt", label: "Kontakt", small: true },
+  { href: "/admin", label: "Admin", small: false },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -27,14 +30,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
 
           {/* Always visible — also on phones and inside narrow embeds. */}
-          <nav className="flex items-center gap-0.5 sm:gap-1">
+          <nav className="flex items-center gap-0.5 overflow-x-auto sm:gap-1">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  "rounded-full px-2.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors sm:px-3.5 sm:text-[13px]",
-                  location === item.href
+                  "rounded-full px-2 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors sm:px-3 sm:text-[13px]",
+                  !item.small && "hidden sm:inline-block",
+                  location === item.href || location.startsWith(`${item.href}/`)
                     ? "bg-panel2 text-cream"
                     : "text-muted hover:text-cream",
                 )}
