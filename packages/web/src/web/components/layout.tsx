@@ -4,12 +4,13 @@ import { cn } from "../lib/utils";
 import { StatusPill } from "./status-pill";
 import { useSpot } from "../queries/market";
 
+// The admin panel stays reachable at /admin but is deliberately not linked:
+// customers should not see an operator entry point in the public navigation.
 const NAV = [
   { href: "/kalkulator", label: "Kalkulator", small: true },
   { href: "/zakljucaj", label: "Zaključaj", small: true },
   { href: "/blog", label: "Blog", small: true },
   { href: "/kontakt", label: "Kontakt", small: true },
-  { href: "/admin", label: "Admin", small: false },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
