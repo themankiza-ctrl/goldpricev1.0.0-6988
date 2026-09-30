@@ -43,7 +43,17 @@ function massLabel(grossWeightG: number) {
  * Auto-rotating product photo. Frames cross-fade every 3.5s, staggered per card
  * so the whole grid does not flip at once, and paused while hovered.
  */
-function CardSlider({ frames, alt, delayMs }: { frames: string[]; alt: string; delayMs: number }) {
+function CardSlider({
+  frames,
+  alt,
+  delayMs,
+  onActive,
+}: {
+  frames: string[];
+  alt: string;
+  delayMs: number;
+  onActive?: (index: number) => void;
+}) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -54,6 +64,10 @@ function CardSlider({ frames, alt, delayMs }: { frames: string[]; alt: string; d
     }, 3500 + delayMs);
     return () => window.clearTimeout(start);
   }, [active, paused, frames.length, delayMs]);
+
+  useEffect(() => {
+    onActive?.(active);
+  }, [active, onActive]);
 
   return (
     <div
@@ -102,10 +116,175 @@ function Spec({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * Photos are named {brand}-{weight}.jpg, so a card can tell which refinery is
+ * on screen and keep the logo and the label in sync with the picture while the
+ * slider rotates through all four manufacturers of that gramaža.
+ */
+const FRAME_BRAND: Record<string, { name: string; logo: string }> = {
+  valcambi: { name: "Valcambi Suisse", logo: "/images/brands/valcambi.png" },
+  argor: { name: "Argor-Heraeus", logo: "/images/brands/argor-heraeus.png" },
+  heraeus: { name: "Heraeus", logo: "/images/brands/heraeus.png" },
+  munze: { name: "Münze Österreich", logo: "/images/brands/munze-osterreich.png" },
+};
+
+function frameBrand(src: string | undefined) {
+  if (!src) return null;
+  const file = src.split("/").pop() ?? "";
+  return FRAME_BRAND[file.split("-")[0]] ?? null;
+}
+
 /** Slider frames: gallery when present, otherwise the single photo. */
 function frames(p: CardItem) {
   const list = p.gallery && p.gallery.length > 0 ? p.gallery : p.imageUrl ? [p.imageUrl] : [];
   return list.filter(Boolean);
+}
+
+function ProductCard({
+  p,
+  idx,
+  currency,
+  lockEnabled,
+  phone,
+  onLock,
+}: {
+  p: CardItem;
+  idx: number;
+  currency: "EUR" | "RSD";
+  lockEnabled: boolean;
+  phone?: string;
+  onLock: (t: LockTarget) => void;
+}) {
+  const shots = frames(p);
+  const [frameIndex, setFrameIndex] = useState(0);
+  const [shot, setShot] = useState(0);
+
+  // The badge follows the photo on screen: one card cycles the same gramaža
+  // from every refinery, so a fixed brand label would contradict the picture.
+  // It swaps at the middle of the 700ms cross-fade, when the new photo takes over.
+  useEffect(() => {
+    const t = window.setTimeout(() => setShot(frameIndex), 350);
+    return () => window.clearTimeout(t);
+  }, [frameIndex]);
+
+  const brand = frameBrand(shots[shot]);
+  const brandName = brand?.name ?? p.manufacturer;
+  const brandLogo = brand?.logo ?? p.brandLogo;
+
+  return (
+      <article
+          className="rise panel group flex flex-col overflow-hidden transition-colors hover:border-gold/40"
+        style={{ animationDelay: `${Math.min(idx, 12) * 35}ms` }}
+      >
+        <div className="relative aspect-4/3 overflow-hidden bg-white">
+          {shots.length > 0 ? (
+            <CardSlider frames={shots} alt={p.name} delayMs={(idx % 4) * 550} onActive={setFrameIndex} />
+          ) : (
+            <div className="num flex size-full items-center justify-center text-[11px] text-ink/40">
+              BEZ SLIKE
+            </div>
+          )}
+          {brandLogo && (
+            <div className="absolute top-2.5 left-2.5 flex h-7 items-center rounded-md bg-white/95 px-2 shadow-sm ring-1 ring-black/5">
+              <img
+                key={brandLogo}
+                src={brandLogo}
+                alt={brandName ?? ""}
+                loading="lazy"
+                className="h-4 w-auto max-w-[86px] object-contain"
+              />
+            </div>
+          )}
+          {p.onRequest ? (
+            <span className="num absolute top-2.5 right-2.5 rounded-full bg-ink/85 px-2 py-1 text-[9px] font-medium tracking-wider text-warn">
+              NA UPIT
+            </span>
+          ) : (
+            <span className="num absolute top-2.5 right-2.5 rounded-full bg-ink/85 px-2 py-1 text-[9px] font-medium tracking-wider text-gold">
+              {massLabel(p.grossWeightG)}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col p-4">
+          {brandName && (
+            <p className="num text-[9px] tracking-wider text-muted">{brandName.toUpperCase()}</p>
+          )}
+          <h3 className="mt-1 text-[14px] leading-snug font-semibold text-cream">{p.name}</h3>
+
+          <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-panel2/60 px-3 py-2.5">
+            <Spec label="MASA" value={massLabel(p.grossWeightG)} />
+            <Spec label="FINOĆA" value={num(p.fineness, 1)} />
+            <Spec
+              label="METAL"
+              value={p.metal === "XAG" ? "Srebro" : "Zlato"}
+            />
+          </div>
+
+          {p.blurb && (
+            <p className="mt-3 line-clamp-3 text-[12px] leading-relaxed text-muted">{p.blurb}</p>
+          )}
+
+          <div className="mt-auto pt-4">
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <p className="num text-[9px] tracking-wider text-muted">PRODAJA</p>
+                <p
+                  className={cn(
+                    "num font-semibold text-gold",
+                    p.onRequest ? "text-[14px]" : "text-[17px]",
+                  )}
+                >
+                  {p.onRequest
+                    ? "NA UPIT"
+                    : money(currency === "EUR" ? p.sellEur : p.sellRsd, currency)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="num text-[9px] tracking-wider text-muted">OTKUP</p>
+                <p className="num text-[13px] font-semibold text-buy">
+                  {money(currency === "EUR" ? p.buyEur : p.buyRsd, currency)}
+                </p>
+              </div>
+            </div>
+
+            <div className="num mt-2 flex items-center justify-between text-[10px] text-muted">
+              <span>spread {num(p.spreadPct, 1)}%</span>
+              <span>
+                {p.vatPct > 0 ? `sa ${num(p.vatPct * 100, 0)}% PDV` : "bez PDV"}
+              </span>
+            </div>
+
+            {lockEnabled && !p.onRequest ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onLock({
+                    sku: p.sku,
+                    name: p.name,
+                    sellEur: p.sellEur,
+                    sellRsd: p.sellRsd,
+                    buyEur: p.buyEur,
+                    buyRsd: p.buyRsd,
+                  })
+                }
+                className="num mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-2.5 text-[11px] font-semibold tracking-wider text-gold transition-colors hover:bg-gold hover:text-ink"
+              >
+                <Lock className="size-3.5" /> ZAKLJUČAJ CENU
+              </button>
+            ) : (
+              <a
+                href={`tel:${phone ?? ""}`}
+                onClick={() => trackCall("kartica-proizvoda")}
+                className="num mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-line px-3 py-2.5 text-[11px] font-semibold tracking-wider text-muted transition-colors hover:border-gold/40 hover:text-cream"
+              >
+                <Phone className="size-3.5" /> POZOVITE NAS
+              </a>
+            )}
+          </div>
+        </div>
+      </article>
+  );
 }
 
 export default function ProductCards({
@@ -124,124 +303,15 @@ export default function ProductCards({
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((p, idx) => (
-        <article
+        <ProductCard
           key={p.sku}
-          className="rise panel group flex flex-col overflow-hidden transition-colors hover:border-gold/40"
-          style={{ animationDelay: `${Math.min(idx, 12) * 35}ms` }}
-        >
-          <div className="relative aspect-4/3 overflow-hidden bg-white">
-            {frames(p).length > 0 ? (
-              <CardSlider
-                frames={frames(p)}
-                alt={p.name}
-                delayMs={(idx % 4) * 550}
-              />
-            ) : (
-              <div className="num flex size-full items-center justify-center text-[11px] text-ink/40">
-                BEZ SLIKE
-              </div>
-            )}
-            {p.brandLogo && (
-              <div className="absolute top-2.5 left-2.5 flex h-7 items-center rounded-md bg-white/95 px-2 shadow-sm ring-1 ring-black/5">
-                <img
-                  src={p.brandLogo}
-                  alt={p.manufacturer ?? ""}
-                  loading="lazy"
-                  className="h-4 w-auto max-w-[86px] object-contain"
-                />
-              </div>
-            )}
-            {p.onRequest ? (
-              <span className="num absolute top-2.5 right-2.5 rounded-full bg-ink/85 px-2 py-1 text-[9px] font-medium tracking-wider text-warn">
-                NA UPIT
-              </span>
-            ) : (
-              <span className="num absolute top-2.5 right-2.5 rounded-full bg-ink/85 px-2 py-1 text-[9px] font-medium tracking-wider text-gold">
-                {massLabel(p.grossWeightG)}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-1 flex-col p-4">
-            {p.manufacturer && (
-              <p className="num text-[9px] tracking-wider text-muted">
-                {p.manufacturer.toUpperCase()}
-              </p>
-            )}
-            <h3 className="mt-1 text-[14px] leading-snug font-semibold text-cream">{p.name}</h3>
-
-            <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-panel2/60 px-3 py-2.5">
-              <Spec label="MASA" value={massLabel(p.grossWeightG)} />
-              <Spec label="FINOĆA" value={num(p.fineness, 1)} />
-              <Spec
-                label="METAL"
-                value={p.metal === "XAG" ? "Srebro" : "Zlato"}
-              />
-            </div>
-
-            {p.blurb && (
-              <p className="mt-3 line-clamp-3 text-[12px] leading-relaxed text-muted">{p.blurb}</p>
-            )}
-
-            <div className="mt-auto pt-4">
-              <div className="flex items-end justify-between gap-2">
-                <div>
-                  <p className="num text-[9px] tracking-wider text-muted">PRODAJA</p>
-                  <p
-                    className={cn(
-                      "num font-semibold text-gold",
-                      p.onRequest ? "text-[14px]" : "text-[17px]",
-                    )}
-                  >
-                    {p.onRequest
-                      ? "NA UPIT"
-                      : money(currency === "EUR" ? p.sellEur : p.sellRsd, currency)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="num text-[9px] tracking-wider text-muted">OTKUP</p>
-                  <p className="num text-[13px] font-semibold text-buy">
-                    {money(currency === "EUR" ? p.buyEur : p.buyRsd, currency)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="num mt-2 flex items-center justify-between text-[10px] text-muted">
-                <span>spread {num(p.spreadPct, 1)}%</span>
-                <span>
-                  {p.vatPct > 0 ? `sa ${num(p.vatPct * 100, 0)}% PDV` : "bez PDV"}
-                </span>
-              </div>
-
-              {lockEnabled && !p.onRequest ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onLock({
-                      sku: p.sku,
-                      name: p.name,
-                      sellEur: p.sellEur,
-                      sellRsd: p.sellRsd,
-                      buyEur: p.buyEur,
-                      buyRsd: p.buyRsd,
-                    })
-                  }
-                  className="num mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-2.5 text-[11px] font-semibold tracking-wider text-gold transition-colors hover:bg-gold hover:text-ink"
-                >
-                  <Lock className="size-3.5" /> ZAKLJUČAJ CENU
-                </button>
-              ) : (
-                <a
-                  href={`tel:${phone ?? ""}`}
-                  onClick={() => trackCall("kartica-proizvoda")}
-                  className="num mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-line px-3 py-2.5 text-[11px] font-semibold tracking-wider text-muted transition-colors hover:border-gold/40 hover:text-cream"
-                >
-                  <Phone className="size-3.5" /> POZOVITE NAS
-                </a>
-              )}
-            </div>
-          </div>
-        </article>
+          p={p}
+          idx={idx}
+          currency={currency}
+          lockEnabled={lockEnabled}
+          phone={phone}
+          onLock={onLock}
+        />
       ))}
     </div>
   );

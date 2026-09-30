@@ -14,15 +14,15 @@ const SLIDES: Slide[] = [
   {
     brand: "Argor-Heraeus",
     logo: "/images/brands/argor-heraeus.png",
-    image: "/images/products/argor-kinebar.jpg",
+    image: "/images/products/argor-100g.jpg",
     country: "Švajcarska · Mendrisio",
-    headline: "Kinebar® zaštita od falsifikata",
-    text: "Švajcarska rafinerija sa LBMA Good Delivery statusom. Kinebar hologram je najjača zaštita na tržištu malih poluga — original se prepoznaje na prvi pogled.",
+    headline: "Švajcarska rafinerija, LBMA standard",
+    text: "Argor-Heraeus ima LBMA Good Delivery status. Svaka poluga dolazi zapečaćena u originalnoj kartici sa serijskim brojem i potpisom ovlašćenog probirača.",
   },
   {
     brand: "Valcambi Suisse",
     logo: "/images/brands/valcambi.png",
-    image: "/images/products/valcambi-livena-poluga.jpg",
+    image: "/images/products/valcambi-50g.jpg",
     country: "Švajcarska · Balerna",
     headline: "Zavarena kartica sa sertifikatom",
     text: "Jedan od najvećih svetskih rafinera plemenitih metala. Pločice u originalnoj zavarenoj kartici sa serijskim brojem — najlikvidniji format za manje ulaganje.",
@@ -30,7 +30,7 @@ const SLIDES: Slide[] = [
   {
     brand: "Heraeus",
     logo: "/images/brands/heraeus.png",
-    image: "/images/products/heraeus-poluga.jpg",
+    image: "/images/products/heraeus-1oz.jpg",
     country: "Nemačka · Hanau",
     headline: "Nemačka preciznost od 1851.",
     text: "Heraeus poluge finoće 999,9 priznate su na svakom berzanskom tržištu. Standard za ulaganja od jedne unce i više.",

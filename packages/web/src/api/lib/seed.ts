@@ -48,51 +48,97 @@ const BRAND = {
 } as const;
 
 const IMG = {
-  malaPlocica: "/images/products/valcambi-mala-plocica.jpg",
-  kinebar: "/images/products/argor-kinebar.jpg",
-  heraeusPoluga: "/images/products/heraeus-poluga.jpg",
-  livena: "/images/products/valcambi-livena-poluga.jpg",
   wpZlato: "/images/products/wp-zlato.jpg",
   wpSrebro: "/images/products/wp-srebro.jpg",
   dukat: "/images/products/dukat-franc-jozef.jpg",
-  argor2g: "/images/products/argor-2g.jpg",
-  argor20g: "/images/products/argor-20g.jpg",
-  argor50g: "/images/products/argor-50g.jpg",
-  argor1oz: "/images/products/argor-1oz.jpg",
-  valcambi250g: "/images/products/valcambi-250g.jpg",
-  valcambiBlister: "/images/products/valcambi-blister-mala.jpg",
-  valcambi50gBlister: "/images/products/valcambi-50g-blister.jpg",
-  heraeusBlister: "/images/products/heraeus-blister.jpg",
-  munzePlocica: "/images/products/munze-plocica.jpg",
 } as const;
 
-/** Extra card-slider photos per SKU (first frame is always imageUrl). */
-const GALLERY: Record<string, string[]> = {
-  "GF-BAR-1G": [IMG.valcambiBlister, IMG.munzePlocica],
-  "GF-BAR-2G": [IMG.argor2g, IMG.valcambiBlister],
-  "GF-BAR-5G": [IMG.valcambiBlister, IMG.munzePlocica],
-  "GF-BAR-10G": [IMG.heraeusBlister, IMG.valcambiBlister],
-  "GF-BAR-20G": [IMG.argor20g, IMG.heraeusBlister],
-  "GF-BAR-1OZ": [IMG.argor1oz, IMG.valcambi50gBlister],
-  "GF-BAR-50G": [IMG.argor50g, IMG.valcambi50gBlister],
-  "GF-BAR-100G": [IMG.valcambi250g, IMG.valcambi50gBlister],
-  "GF-BAR-250G": [IMG.valcambi250g, IMG.argor50g],
-  "GF-BAR-500G": [IMG.valcambi250g],
-  "GF-BAR-1000G": [IMG.valcambi250g],
+/**
+ * Bars are photographed per gramaža for every refinery, so a card can show that
+ * exact weight from each manufacturer instead of one shared generic photo.
+ * File naming: /images/products/{brand}-{weight}.jpg
+ */
+const BAR_WEIGHT: Record<string, string> = {
+  "GF-BAR-1G": "1g",
+  "GF-BAR-2G": "2g",
+  "GF-BAR-5G": "5g",
+  "GF-BAR-10G": "10g",
+  "GF-BAR-20G": "20g",
+  "GF-BAR-1OZ": "1oz",
+  "GF-BAR-50G": "50g",
+  "GF-BAR-100G": "100g",
+  "GF-BAR-250G": "250g",
+  "GF-BAR-500G": "500g",
+  "GF-BAR-1000G": "1000g",
 };
 
+/** Refinery that leads the card — its photo is the first slider frame. */
+const BAR_PRIMARY: Record<string, keyof typeof BRAND> = {
+  "GF-BAR-1G": "valcambi",
+  "GF-BAR-2G": "valcambi",
+  "GF-BAR-5G": "valcambi",
+  "GF-BAR-10G": "argor",
+  "GF-BAR-20G": "argor",
+  "GF-BAR-1OZ": "heraeus",
+  "GF-BAR-50G": "heraeus",
+  "GF-BAR-100G": "valcambi",
+  "GF-BAR-250G": "valcambi",
+  "GF-BAR-500G": "valcambi",
+  "GF-BAR-1000G": "valcambi",
+};
+
+const BRAND_ORDER = ["valcambi", "argor", "heraeus", "munze"] as const;
+
+function barPhoto(brand: string, sku: string) {
+  return `/images/products/${brand}-${BAR_WEIGHT[sku]}.jpg`;
+}
+
+/** All four manufacturer photos of one weight, primary refinery first. */
+function barFrames(sku: string) {
+  const primary = BAR_PRIMARY[sku];
+  const order = [primary, ...BRAND_ORDER.filter((b) => b !== primary)];
+  return order.map((b) => barPhoto(b, sku));
+}
+
+/** Extra card-slider photos per SKU (first frame is always imageUrl). */
+const GALLERY: Record<string, string[]> = Object.fromEntries(
+  Object.keys(BAR_WEIGHT).map((sku) => [sku, barFrames(sku).slice(1)]),
+);
+
+/**
+ * Bar photos are canonical per gramaža, so bar rows are repointed onto the
+ * current file set — older rows referenced shared or watermarked photos that
+ * have since been deleted.
+ */
+function hasCanonicalPhotos(sku: string, imageUrl: string | null, gallery: string | null) {
+  const frames = barFrames(sku);
+  return imageUrl === frames[0] && gallery === frames.join(",");
+}
+
+/** Wording that described photos we no longer use (cast bars, Kinebar shots). */
+const OUTDATED_BLURB = [
+  "Livena poluga",
+  "Kinebar",
+  "iz Argor-Heraeus rafinerije",
+  "iz nemačke Heraeus rafinerije",
+];
+
+function describesOldPhoto(blurb: string | null) {
+  return Boolean(blurb) && OUTDATED_BLURB.some((t) => blurb?.includes(t));
+}
+
 const META: Record<string, { manufacturer: string; brandLogo: string; imageUrl: string; blurb: string }> = {
-  "GF-BAR-1G": { ...BRAND.valcambi, imageUrl: IMG.malaPlocica, blurb: "Najmanji format investicionog zlata, finoće 999,9 — ulaz u zlato bez velikog početnog kapitala. Dolazi zavarena u originalnoj Valcambi kartici sa serijskim brojem i certifikatom. Idealna za poklon i za postepeno građenje rezerve gram po gram." },
-  "GF-BAR-2G": { ...BRAND.valcambi, imageUrl: IMG.malaPlocica, blurb: "Pločica od 2 g u zavarenoj kartici sa certifikatom, finoća 999,9. Nešto niža marža po gramu od jednogramske, a zadržava maksimalnu deljivost rezerve. Najčešći izbor za prvi ozbiljniji korak u investiciono zlato." },
-  "GF-BAR-5G": { ...BRAND.valcambi, imageUrl: IMG.malaPlocica, blurb: "Pet grama zlata finoće 999,9 u originalnom zaštitnom pakovanju sa serijskim brojem. Dobar balans između cene po gramu i mogućnosti da rezervu prodaješ u malim delovima. Lako se čuva i lako preprodaje na celom tržištu EU." },
-  "GF-BAR-10G": { ...BRAND.argor, imageUrl: IMG.kinebar, blurb: "Argor-Heraeus Kinebar® — švajcarska poluga od 10 g sa holografskom zaštitom od falsifikovanja, finoća 999,9. Zavarena u certifikovanoj kartici sa potpisom ovlašćenog probirača. Jedan od najlikvidnijih formata na evropskom tržištu." },
-  "GF-BAR-20G": { ...BRAND.argor, imageUrl: IMG.kinebar, blurb: "Dvadeset grama švajcarskog zlata finoće 999,9 iz Argor-Heraeus rafinerije, LBMA Good Delivery standard. Kinebar holografska zaštita čini je jednom od najsigurnijih poluga za privatno čuvanje. Marža po gramu je znatno niža nego kod malih gramaža." },
-  "GF-BAR-1OZ": { ...BRAND.heraeus, imageUrl: IMG.heraeusPoluga, blurb: "Troj unca (31,1035 g) zlata finoće 999,9 — svetski standardna jedinica u kojoj se kotira berzanska cena. Zbog toga se najlakše upoređuje sa spotom i najbrže prodaje bilo gde u svetu. Dolazi u originalnom zavarenom pakovanju sa certifikatom." },
-  "GF-BAR-50G": { ...BRAND.heraeus, imageUrl: IMG.heraeusPoluga, blurb: "Pedeset grama zlata finoće 999,9 iz nemačke Heraeus rafinerije, sa serijskim brojem i certifikatom. Prelazak u srednje gramaže gde marža po gramu značajno pada. Namenjena kupcu koji gradi rezervu, a ne trguje na kratko." },
-  "GF-BAR-100G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Sto grama investicionog zlata finoće 999,9 — jedan od najboljih odnosa cene po gramu i praktičnosti čuvanja. Livena poluga sa utisnutim serijskim brojem, težinom i finoćom, u zaštitnom pakovanju. Standardni format u sefovima i privatnim trezorima." },
-  "GF-BAR-250G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Poluga od 250 g finoće 999,9, LBMA priznata rafinerija. Marža po gramu je među najnižim u ponudi, pa je namenjena većim, dugoročnim ulaganjima. Preporučujemo čuvanje u sefu ili trezoru sa osiguranjem." },
-  "GF-BAR-500G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Pola kilograma zlata finoće 999,9 — format za ozbiljne portfolio pozicije. Cena se ugovara telefonom jer zavisi od trenutne dostupnosti i berzanskog kursa u momentu uplate. Isporuka uz zapisnik i certifikat rafinerije." },
-  "GF-BAR-1000G": { ...BRAND.valcambi, imageUrl: IMG.livena, blurb: "Kilogramska poluga, finoća 999,9 — najniža marža po gramu u celoj ponudi. Isključivo po dogovoru: cena i rok isporuke se fiksiraju direktno sa nama, uz zaključenje po aktuelnom spotu. Standard za institucionalne i porodične rezerve." },
+  "GF-BAR-1G": { ...BRAND.valcambi, imageUrl: barPhoto("valcambi", "GF-BAR-1G"), blurb: "Najmanji format investicionog zlata, finoće 999,9 — ulaz u zlato bez velikog početnog kapitala. Dolazi zavarena u originalnoj Valcambi kartici sa serijskim brojem i certifikatom. Idealna za poklon i za postepeno građenje rezerve gram po gram." },
+  "GF-BAR-2G": { ...BRAND.valcambi, imageUrl: barPhoto("valcambi", "GF-BAR-2G"), blurb: "Pločica od 2 g u zavarenoj kartici sa certifikatom, finoća 999,9. Nešto niža marža po gramu od jednogramske, a zadržava maksimalnu deljivost rezerve. Najčešći izbor za prvi ozbiljniji korak u investiciono zlato." },
+  "GF-BAR-5G": { ...BRAND.valcambi, imageUrl: barPhoto("valcambi", "GF-BAR-5G"), blurb: "Pet grama zlata finoće 999,9 u originalnom zaštitnom pakovanju sa serijskim brojem. Dobar balans između cene po gramu i mogućnosti da rezervu prodaješ u malim delovima. Lako se čuva i lako preprodaje na celom tržištu EU." },
+  "GF-BAR-10G": { ...BRAND.argor, imageUrl: barPhoto("argor", "GF-BAR-10G"), blurb: "Deset grama zlata finoće 999,9, zavareno u certifikovanoj kartici sa serijskim brojem i potpisom ovlašćenog probirača. Jedan od najlikvidnijih formata na evropskom tržištu. Dostupno iz sve četiri rafinerije iz naše ponude." },
+  "GF-BAR-20G": { ...BRAND.argor, imageUrl: barPhoto("argor", "GF-BAR-20G"), blurb: "Dvadeset grama zlata finoće 999,9 iz rafinerija sa LBMA Good Delivery statusom. Poluga je zapečaćena u originalnoj kartici sa sertifikatom i serijskim brojem. Marža po gramu je znatno niža nego kod malih gramaža." },
+  "GF-BAR-1OZ": { ...BRAND.heraeus, imageUrl: barPhoto("heraeus", "GF-BAR-1OZ"), blurb: "Troj unca (31,1035 g) zlata finoće 999,9 — svetski standardna jedinica u kojoj se kotira berzanska cena. Zbog toga se najlakše upoređuje sa spotom i najbrže prodaje bilo gde u svetu. Dolazi u originalnom zavarenom pakovanju sa certifikatom." },
+  "GF-BAR-50G": { ...BRAND.heraeus, imageUrl: barPhoto("heraeus", "GF-BAR-50G"), blurb: "Pedeset grama zlata finoće 999,9, zapečaćeno u originalnoj kartici sa serijskim brojem i certifikatom. Prelazak u srednje gramaže gde marža po gramu značajno pada. Namenjeno kupcu koji gradi rezervu, a ne trguje na kratko." },
+  "GF-BAR-100G": { ...BRAND.valcambi, imageUrl: barPhoto("valcambi", "GF-BAR-100G"), blurb: "Sto grama investicionog zlata finoće 999,9 — jedan od najboljih odnosa cene po gramu i praktičnosti čuvanja. Poluga zapečaćena u zaštitnoj kaseti, sa serijskim brojem, težinom i finoćom na kartici. Standardni format u sefovima i privatnim trezorima." },
+  "GF-BAR-250G": { ...BRAND.valcambi, imageUrl: barPhoto("valcambi", "GF-BAR-250G"), blurb: "Poluga od 250 g finoće 999,9, LBMA priznata rafinerija. Marža po gramu je među najnižim u ponudi, pa je namenjena većim, dugoročnim ulaganjima. Preporučujemo čuvanje u sefu ili trezoru sa osiguranjem." },
+  "GF-BAR-500G": { ...BRAND.valcambi, imageUrl: barPhoto("valcambi", "GF-BAR-500G"), blurb: "Pola kilograma zlata finoće 999,9 — format za ozbiljne portfolio pozicije. Cena se ugovara telefonom jer zavisi od trenutne dostupnosti i berzanskog kursa u momentu uplate. Isporuka uz zapisnik i certifikat rafinerije." },
+  "GF-BAR-1000G": { ...BRAND.valcambi, imageUrl: barPhoto("valcambi", "GF-BAR-1000G"), blurb: "Kilogramska poluga, finoća 999,9 — najniža marža po gramu u celoj ponudi. Isključivo po dogovoru: cena i rok isporuke se fiksiraju direktno sa nama, uz zaključenje po aktuelnom spotu. Standard za institucionalne i porodične rezerve." },
   "GF-WP-1-10OZ": { ...BRAND.munze, imageUrl: IMG.wpZlato, blurb: "Wiener Philharmoniker 1/10 unce (3,11 g) — najprodavanija zlatna kovanica u Evropi, finoća 999,9. Zvanično sredstvo plaćanja Republike Austrije, pa uživa dodatno poverenje na tržištu. Najpristupačniji način da se uđe u zlatne kovanice." },
   "GF-FJ-MALI": { ...BRAND.munze, imageUrl: IMG.dukat, blurb: "Mali dukat Franc Jozef, 3,49 g finoće 986,0 — klasika srpskog i austrijskog tržišta zlata. Tradicionalni poklon za svadbe, krštenja i rođenja, uz stalnu tražnju i lak otkup. Kupuje se i prodaje po ceni koja prati berzansku vrednost zlata." },
   "GF-WP-1-4OZ": { ...BRAND.munze, imageUrl: IMG.wpZlato, blurb: "Četvrtina unce (7,78 g) austrijske Filharmonije, finoća 999,9, kovana u Münze Österreich. Motiv orgulja Zlatne sale Bečke filharmonije poznat je kolekcionarima i investitorima širom sveta. Odličan kompromis između deljivosti i cene po gramu." },
@@ -132,19 +178,23 @@ export async function seedIfEmpty() {
     const meta = META[row.sku];
     if (!meta) continue;
     const extra = GALLERY[row.sku];
+    const stalePhotos =
+      row.sku in BAR_WEIGHT && !hasCanonicalPhotos(row.sku, row.imageUrl, row.gallery);
+    const staleBlurb = describesOldPhoto(row.blurb);
+    const imageUrl = stalePhotos ? meta.imageUrl : (row.imageUrl ?? meta.imageUrl);
     const galleryValue = extra
-      ? [row.imageUrl ?? meta.imageUrl, ...extra].filter((v, i, a) => a.indexOf(v) === i).join(",")
+      ? [imageUrl, ...extra].filter((v, i, a) => a.indexOf(v) === i).join(",")
       : null;
     const needsGallery = Boolean(galleryValue) && !row.gallery;
-    if (row.manufacturer && row.blurb && !needsGallery) continue;
+    if (row.manufacturer && row.blurb && !needsGallery && !stalePhotos && !staleBlurb) continue;
     await db
       .update(products)
       .set({
         manufacturer: row.manufacturer ?? meta.manufacturer,
         brandLogo: meta.brandLogo,
-        imageUrl: row.imageUrl ?? meta.imageUrl,
-        blurb: row.blurb ?? meta.blurb,
-        gallery: row.gallery ?? galleryValue,
+        imageUrl,
+        blurb: staleBlurb ? meta.blurb : (row.blurb ?? meta.blurb),
+        gallery: stalePhotos ? galleryValue : (row.gallery ?? galleryValue),
       })
       .where(eq(products.sku, row.sku));
     patched += 1;
