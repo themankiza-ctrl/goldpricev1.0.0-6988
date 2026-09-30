@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  BellRing,
   Check,
   Copy,
   Database,
   KeyRound,
   Loader2,
+  Mail,
+  Play,
   Plug,
   Lock,
+  RotateCcw,
   Save,
+  Send,
   Sliders,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import {
   getAdminKey,
@@ -25,15 +31,28 @@ import {
 } from "../queries/admin";
 import { usePriceHistory, useSnapshotAll, useSpot, useSpotHistory } from "../queries/market";
 import { useLocks, usePurgeLocks, useSetLockStatus } from "../queries/locks";
+import {
+  useAlertLog,
+  useAlertPurge,
+  useAlertResendConfirm,
+  useAlertResetRefs,
+  useAlertRunNow,
+  useAlertSetStatus,
+  useAlertStatus,
+  useAlertSubscribers,
+  useAlertTestSend,
+  useAlertVerifySmtp,
+} from "../queries/alerts";
 import { clock, eur, num, pct, rsd } from "../lib/format";
 import { cn } from "../lib/utils";
 import { StatusPill } from "../components/status-pill";
 
-type Tab = "spot" | "rezervacije" | "proizvodi" | "pravila" | "istorija" | "feeds";
+type Tab = "spot" | "rezervacije" | "alarmi" | "proizvodi" | "pravila" | "istorija" | "feeds";
 
 const TABS: { key: Tab; label: string; icon: typeof Activity }[] = [
   { key: "spot", label: "Spot monitor", icon: Activity },
   { key: "rezervacije", label: "Rezervacije", icon: Lock },
+  { key: "alarmi", label: "Alarmi", icon: BellRing },
   { key: "proizvodi", label: "Proizvodi", icon: Database },
   { key: "pravila", label: "Pravila cena", icon: Sliders },
   { key: "istorija", label: "Istorija", icon: Save },
@@ -157,6 +176,7 @@ function Panel({ onLogout }: { onLogout: () => void }) {
       <div className="mt-8">
         {tab === "spot" && <SpotTab />}
         {tab === "rezervacije" && <LocksTab />}
+        {tab === "alarmi" && <AlertsTab />}
         {tab === "proizvodi" && <ProductsTab />}
         {tab === "pravila" && <RulesTab />}
         {tab === "istorija" && <HistoryTab />}
@@ -1291,6 +1311,602 @@ function LocksTab() {
         <Trash2 className="size-3.5" />
         Očisti istekle i otkazane
       </button>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------- alarmi */
+
+const ALERT_FILTERS: {
+  key: "all" | "pending" | "aktivan" | "ispunjen" | "odjavljen";
+  label: string;
+}[] = [
+  { key: "aktivan", label: "Aktivni" },
+  { key: "pending", label: "Čekaju potvrdu" },
+  { key: "ispunjen", label: "Ispunjeni" },
+  { key: "odjavljen", label: "Odjavljeni" },
+  { key: "all", label: "Svi" },
+];
+
+const SUB_STATUS_STYLE: Record<string, string> = {
+  aktivan: "bg-buy/15 text-buy border-buy/40",
+  pending: "bg-gold/15 text-gold border-gold/40",
+  ispunjen: "bg-panel2 text-cream border-line",
+  odjavljen: "bg-danger/15 text-danger border-danger/40",
+};
+
+const CHANNEL_LABEL: Record<string, string> = {
+  interni: "interni",
+  kupac: "kupac",
+  potvrda: "potvrda",
+  test: "test",
+};
+
+function AlertsTab() {
+  const settings = useAdminSettings(true);
+  const update = useUpdateSettings();
+  const s = settings.data;
+
+  const status = useAlertStatus();
+  const verify = useAlertVerifySmtp();
+  const testSend = useAlertTestSend();
+  const runNow = useAlertRunNow();
+  const resetRefs = useAlertResetRefs();
+  const setSubStatus = useAlertSetStatus();
+  const purge = useAlertPurge();
+  const resend = useAlertResendConfirm();
+
+  const [filter, setFilter] = useState<"all" | "pending" | "aktivan" | "ispunjen" | "odjavljen">(
+    "aktivan",
+  );
+  const subs = useAlertSubscribers(filter);
+  const log = useAlertLog();
+
+  const [form, setForm] = useState<Record<string, string | boolean>>({});
+  const [testTo, setTestTo] = useState("");
+  const [testVariant, setTestVariant] = useState<"interni" | "kupac">("interni");
+
+  useEffect(() => {
+    if (!s) return;
+    setForm({
+      alertsEnabled: s.alertsEnabled,
+      alertInternalEnabled: s.alertInternalEnabled,
+      alertInternalTo: s.alertInternalTo,
+      alertInternalPct: String(s.alertInternalPct),
+      alertPublicEnabled: s.alertPublicEnabled,
+      alertCooldownMinutes: String(s.alertCooldownMinutes),
+      alertMaxPerDay: String(s.alertMaxPerDay),
+      alertFromName: s.alertFromName,
+      alertSiteUrl: s.alertSiteUrl,
+    });
+    setTestTo((prev) => prev || s.alertInternalTo.split(",")[0]?.trim() || "");
+  }, [s]);
+
+  if (!s) return <p className="text-[13px] text-muted">Učitavanje…</p>;
+
+  const t = (k: string) => String(form[k] ?? "");
+  const n = (k: string) => Number(form[k]);
+  const set = (k: string, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
+
+  const save = () =>
+    update.mutate({
+      alertsEnabled: Boolean(form.alertsEnabled),
+      alertInternalEnabled: Boolean(form.alertInternalEnabled),
+      alertInternalTo: t("alertInternalTo").replace(/\s/g, ""),
+      alertInternalPct: n("alertInternalPct"),
+      alertPublicEnabled: Boolean(form.alertPublicEnabled),
+      alertCooldownMinutes: n("alertCooldownMinutes"),
+      alertMaxPerDay: n("alertMaxPerDay"),
+      alertFromName: t("alertFromName"),
+      alertSiteUrl: t("alertSiteUrl").replace(/\/+$/, ""),
+    });
+
+  const st = status.data;
+  const rows = subs.data?.rows ?? [];
+  const counts = subs.data?.counts;
+  const logRows = log.data ?? [];
+
+  return (
+    <div className="space-y-6">
+      {/* ---------------------------------------------------- stanje slanja */}
+      <div className="panel p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="display text-lg font-bold">Stanje slanja</h3>
+            <p className="mt-1.5 max-w-xl text-[12px] leading-relaxed text-muted">
+              Alarmi se proveravaju na svakom osvežavanju spot cene. Mejl ide samo kada cena
+              pređe prag, i to uz pauzu i dnevni limit — da jedan nervozan dan ne napuni nikome
+              inboks.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => verify.mutate({})}
+              disabled={verify.isPending}
+              className="flex items-center gap-2 rounded-full border border-line px-4 py-2 text-[12px] text-muted hover:text-cream disabled:opacity-40"
+            >
+              {verify.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plug className="size-3.5" />
+              )}
+              Proveri SMTP
+            </button>
+            <button
+              type="button"
+              onClick={() => runNow.mutate({})}
+              disabled={runNow.isPending}
+              className="flex items-center gap-2 rounded-full bg-gold px-4 py-2 text-[12px] font-semibold text-ink disabled:opacity-40"
+            >
+              {runNow.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Play className="size-3.5" />
+              )}
+              Proveri sada
+            </button>
+          </div>
+        </div>
+
+        {st && !st.smtpConfigured && (
+          <div className="mt-5 flex items-start gap-3 rounded-[14px] border border-danger/40 bg-danger/10 p-4">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" />
+            <div className="text-[12px] leading-relaxed">
+              <p className="font-semibold text-danger">SMTP nije podešen — nijedan mejl ne izlazi.</p>
+              <p className="mt-1 text-muted">
+                Sistem beleži svaki alarm u dnevnik ispod, ali slanje preskače. Unesi{" "}
+                <span className="num">SMTP_HOST</span>, <span className="num">SMTP_USER</span> i{" "}
+                <span className="num">SMTP_PASS</span> u <span className="num">.env</span> pa
+                ponovo pokreni server.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5 grid gap-x-8 gap-y-1 sm:grid-cols-2">
+          <Row
+            label="SMTP"
+            value={st ? (st.smtpConfigured ? `povezan — ${st.sender ?? "?"}` : "nije podešen") : "…"}
+          />
+          <Row
+            label="Spot sada"
+            value={st?.spotEurPerGram ? `${num(st.spotEurPerGram)} €/g` : "—"}
+            mono
+          />
+          <Row
+            label="Interna referenca"
+            value={st?.internalRef ? `${num(st.internalRef)} €/g` : "još nije postavljena"}
+            mono
+          />
+          <Row
+            label="Interni alarm danas"
+            value={`${st?.internalSentToday ?? 0} / ${s.alertMaxPerDay}`}
+            mono
+          />
+          <Row
+            label="Poslednji uspešan mejl"
+            value={st?.lastOkAt ? clock(st.lastOkAt) : "—"}
+            mono
+          />
+          <Row label="Poslednja greška" value={st?.lastError ?? "nema"} />
+        </div>
+
+        {verify.data && (
+          <p
+            className={cn(
+              "mt-4 text-[12px]",
+              verify.data.ok ? "text-buy" : "text-danger",
+            )}
+          >
+            {verify.data.ok
+              ? "SMTP odgovara — slanje radi."
+              : `SMTP ne odgovara: ${verify.data.error ?? "nepoznata greška"}`}
+          </p>
+        )}
+        {runNow.data && (
+          <p className="mt-4 text-[12px] text-muted">
+            Provera završena: interni {runNow.data.internalSent ? "poslat" : "preskočen"}, kupcima
+            poslato {runNow.data.customersSent}, preskočeno {runNow.data.skipped}.
+            {runNow.data.reason ? ` (${runNow.data.reason})` : ""}
+          </p>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------- probni mejl */}
+      <div className="panel p-6">
+        <h3 className="display text-lg font-bold">Probni mejl</h3>
+        <p className="mt-1.5 max-w-xl text-[12px] leading-relaxed text-muted">
+          Šalje mejl sa pravim trenutnim brojevima i izmišljenom promenom od 1%. Ne pomera
+          reference i ne troši dnevni limit.
+        </p>
+        <div className="mt-5 flex flex-wrap items-end gap-3">
+          <div className="min-w-[240px] flex-1">
+            <Field label="Adresa">
+              <input
+                aria-label="Adresa za probni mejl"
+                className="field"
+                value={testTo}
+                onChange={(e) => setTestTo(e.target.value)}
+                placeholder="ime@primer.rs"
+              />
+            </Field>
+          </div>
+          <div className="flex gap-1.5 pb-0.5">
+            {(["interni", "kupac"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setTestVariant(v)}
+                className={cn(
+                  "num rounded-full px-3 py-2 text-[11px] font-medium transition-colors",
+                  testVariant === v ? "bg-gold text-ink" : "border border-line text-muted",
+                )}
+              >
+                {v === "interni" ? "Interni izgled" : "Izgled za kupca"}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => testSend.mutate({ to: testTo.trim(), variant: testVariant })}
+            disabled={testSend.isPending || !testTo.trim()}
+            className="flex items-center gap-2 rounded-full border border-line px-4 py-2 text-[12px] text-cream hover:border-gold disabled:opacity-40"
+          >
+            {testSend.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Send className="size-3.5" />
+            )}
+            Pošalji probni
+          </button>
+        </div>
+        {testSend.data && (
+          <p className={cn("mt-3 text-[12px]", testSend.data.ok ? "text-buy" : "text-danger")}>
+            {testSend.data.ok
+              ? `Poslato na ${testTo.trim()}.`
+              : `Nije poslato: ${testSend.data.error ?? "SMTP nije podešen"}`}
+          </p>
+        )}
+        {testSend.isError && (
+          <p className="mt-3 text-[12px] text-danger">Greška pri slanju probnog mejla.</p>
+        )}
+      </div>
+
+      {/* --------------------------------------------------------- podešavanja */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card
+          title="Interni alarm"
+          note="Mejl vama kada spot pređe prag u odnosu na poslednju zapamćenu referencu. Referenca se pomera svaki put kad alarm okine, pa se isti pokret ne prijavljuje dvaput."
+          toggle={{
+            on: Boolean(form.alertInternalEnabled),
+            set: (v) => set("alertInternalEnabled", v),
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="Primaoci (zapetama)">
+                <input
+                  aria-label="Interni primaoci alarma"
+                  className="field"
+                  value={t("alertInternalTo")}
+                  onChange={(e) => set("alertInternalTo", e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label="Prag promene (%)">
+              <input
+                aria-label="Interni prag promene u procentima"
+                className="field"
+                value={t("alertInternalPct")}
+                onChange={(e) => set("alertInternalPct", e.target.value)}
+              />
+            </Field>
+            <Field label="Pauza između mejlova (min)">
+              <input
+                aria-label="Pauza između mejlova u minutima"
+                className="field"
+                value={t("alertCooldownMinutes")}
+                onChange={(e) => set("alertCooldownMinutes", e.target.value)}
+              />
+            </Field>
+            <Field label="Maks. mejlova dnevno">
+              <input
+                aria-label="Maksimalno mejlova dnevno"
+                className="field"
+                value={t("alertMaxPerDay")}
+                onChange={(e) => set("alertMaxPerDay", e.target.value)}
+              />
+            </Field>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => resetRefs.mutate({})}
+                disabled={resetRefs.isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-line px-3 py-2 text-[11px] text-muted hover:text-cream disabled:opacity-40"
+              >
+                {resetRefs.isPending ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="size-3.5" />
+                )}
+                Poravnaj reference
+              </button>
+            </div>
+          </div>
+          {resetRefs.data && (
+            <p className="mt-3 text-[12px] text-buy">
+              Sve reference postavljene na {resetRefs.data.pretty}.
+            </p>
+          )}
+        </Card>
+
+        <Card
+          title="Javna pretplata"
+          note="Strana /alarm na kojoj kupci sami biraju prag, smer i ciljnu cenu. Prijava uvek ide kroz potvrdni mejl, tako da niko ne može da upiše tuđu adresu."
+          toggle={{
+            on: Boolean(form.alertPublicEnabled),
+            set: (v) => set("alertPublicEnabled", v),
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Ime pošiljaoca">
+              <input
+                aria-label="Ime pošiljaoca mejla"
+                className="field"
+                value={t("alertFromName")}
+                onChange={(e) => set("alertFromName", e.target.value)}
+              />
+            </Field>
+            <Field label="Adresa sajta u mejlu">
+              <input
+                aria-label="Adresa sajta u mejlu"
+                className="field"
+                value={t("alertSiteUrl")}
+                onChange={(e) => set("alertSiteUrl", e.target.value)}
+              />
+            </Field>
+            <div className="sm:col-span-2 flex items-center justify-between rounded-[14px] border border-line bg-panel2 px-4 py-3">
+              <div>
+                <p className="text-[12px] font-medium">Glavni prekidač</p>
+                <p className="mt-0.5 text-[11px] text-muted">
+                  Isključen — nijedan alarm ne izlazi, ni interni ni za kupce.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Glavni prekidač alarma"
+                aria-pressed={Boolean(form.alertsEnabled)}
+                onClick={() => set("alertsEnabled", !form.alertsEnabled)}
+                className={cn(
+                  "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                  form.alertsEnabled ? "bg-gold" : "border border-line bg-panel",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-1 size-4 rounded-full transition-all",
+                    form.alertsEnabled ? "left-6 bg-ink" : "left-1 bg-muted",
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={save}
+          disabled={update.isPending}
+          className="flex items-center gap-2 rounded-full bg-gold px-6 py-2.5 text-[13px] font-semibold text-ink disabled:opacity-40"
+        >
+          {update.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Save className="size-4" />
+          )}
+          Sačuvaj alarme
+        </button>
+        {update.isSuccess && <span className="text-[12px] text-buy">Sačuvano.</span>}
+        {update.isError && <span className="text-[12px] text-danger">Greška pri čuvanju.</span>}
+      </div>
+
+      {/* ------------------------------------------------------- pretplatnici */}
+      <div className="panel flex flex-wrap items-center justify-between gap-4 p-5">
+        <div>
+          <h3 className="display text-lg font-bold">
+            Pretplatnici
+            {counts ? (
+              <span className="num ml-2 text-[13px] font-medium text-gold">
+                {counts.aktivan} aktivnih
+              </span>
+            ) : null}
+          </h3>
+          <p className="mt-1.5 max-w-xl text-[12px] leading-relaxed text-muted">
+            „Čekaju potvrdu" su prijave koje nisu kliknule na link iz mejla — njima ne ide ništa
+            dok ne potvrde. „Ispunjen" je alarm na ciljnu cenu koji je okinuo i sam se ugasio.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {ALERT_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "num rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors",
+                filter === f.key ? "bg-gold text-ink" : "border border-line text-muted",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {subs.isLoading ? (
+        <p className="text-[13px] text-muted">Učitavanje…</p>
+      ) : rows.length === 0 ? (
+        <p className="panel p-6 text-[13px] text-muted">Nema pretplatnika u ovoj kategoriji.</p>
+      ) : (
+        <div className="panel overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[880px] border-collapse">
+              <thead>
+                <tr className="border-b border-line text-left">
+                  {["EMAIL", "ALARM", "REFERENCA", "POSLEDNJI MEJL", "STATUS", ""].map((h) => (
+                    <th
+                      key={h}
+                      className="num px-4 py-3 text-[10px] font-medium tracking-wider text-muted"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b border-line/60 last:border-0">
+                    <td className="px-4 py-3">
+                      <p className="num text-[12px] font-medium">{r.email}</p>
+                      <p className="mt-0.5 text-[10px] text-muted">
+                        prijava {clock(r.createdAt)} · {r.source}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-[12px]">{r.description}</td>
+                    <td className="num px-4 py-3 text-[12px] text-muted">
+                      {r.refEurPerGram ? `${num(r.refEurPerGram)} €/g` : "—"}
+                    </td>
+                    <td className="num px-4 py-3 text-[11px] text-muted">
+                      {r.lastSentAt ? clock(r.lastSentAt) : "—"}
+                      {r.sentToday > 0 ? (
+                        <span className="ml-2 text-[10px]">danas {r.sentToday}</span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          "num rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                          SUB_STATUS_STYLE[r.status] ?? SUB_STATUS_STYLE.ispunjen,
+                        )}
+                      >
+                        {r.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1.5">
+                        {r.status === "pending" && (
+                          <button
+                            type="button"
+                            onClick={() => resend.mutate({ id: r.id })}
+                            className="num flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[11px] text-muted hover:text-cream"
+                          >
+                            <Mail className="size-3" />
+                            Pošalji potvrdu
+                          </button>
+                        )}
+                        {r.status !== "aktivan" && (
+                          <button
+                            type="button"
+                            onClick={() => setSubStatus.mutate({ id: r.id, status: "aktivan" })}
+                            className="num rounded-full bg-buy/15 px-3 py-1.5 text-[11px] font-medium text-buy"
+                          >
+                            Aktiviraj
+                          </button>
+                        )}
+                        {r.status !== "odjavljen" && (
+                          <button
+                            type="button"
+                            onClick={() => setSubStatus.mutate({ id: r.id, status: "odjavljen" })}
+                            className="num rounded-full border border-line px-3 py-1.5 text-[11px] text-muted hover:text-danger"
+                          >
+                            Odjavi
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => purge.mutate({})}
+        disabled={purge.isPending}
+        className="flex items-center gap-2 rounded-full border border-line px-4 py-2 text-[12px] text-muted hover:text-danger disabled:opacity-40"
+      >
+        <Trash2 className="size-3.5" />
+        Očisti odjavljene i ispunjene
+        {purge.data ? <span className="num">· obrisano {purge.data.removed}</span> : null}
+      </button>
+
+      {/* ------------------------------------------------------------ dnevnik */}
+      <div className="panel overflow-hidden">
+        <div className="border-b border-line p-5">
+          <h3 className="display text-lg font-bold">Dnevnik slanja</h3>
+          <p className="mt-1.5 max-w-xl text-[12px] leading-relaxed text-muted">
+            Svaki pokušaj slanja, uspešan ili ne, sa cenom i promenom koja ga je izazvala.
+          </p>
+        </div>
+        {logRows.length === 0 ? (
+          <p className="p-6 text-[13px] text-muted">Još nema poslatih mejlova.</p>
+        ) : (
+          <div className="max-h-[420px] overflow-auto">
+            <table className="w-full min-w-[820px] border-collapse">
+              <thead className="sticky top-0 bg-panel">
+                <tr className="border-b border-line text-left">
+                  {["VREME", "KANAL", "PRIMALAC", "CENA", "PROMENA", "ISHOD"].map((h) => (
+                    <th
+                      key={h}
+                      className="num px-4 py-3 text-[10px] font-medium tracking-wider text-muted"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {logRows.map((l) => (
+                  <tr key={l.id} className="border-b border-line/60 last:border-0">
+                    <td className="num px-4 py-2.5 text-[11px] text-muted">{clock(l.createdAt)}</td>
+                    <td className="num px-4 py-2.5 text-[11px] text-gold">
+                      {CHANNEL_LABEL[l.channel] ?? l.channel}
+                    </td>
+                    <td className="num px-4 py-2.5 text-[11px]">{l.toEmail}</td>
+                    <td className="num px-4 py-2.5 text-[11px]">
+                      {l.eurPerGram ? `${num(l.eurPerGram)} €/g` : "—"}
+                    </td>
+                    <td
+                      className={cn(
+                        "num px-4 py-2.5 text-[11px]",
+                        (l.movePct ?? 0) < 0 ? "text-danger" : "text-buy",
+                      )}
+                    >
+                      {l.movePct === null ? "—" : `${l.movePct > 0 ? "+" : ""}${num(l.movePct)}%`}
+                    </td>
+                    <td className="px-4 py-2.5 text-[11px]">
+                      {l.ok ? (
+                        <span className="flex items-center gap-1.5 text-buy">
+                          <Check className="size-3" />
+                          poslato
+                        </span>
+                      ) : (
+                        <span className="text-danger">{l.error ?? "greška"}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

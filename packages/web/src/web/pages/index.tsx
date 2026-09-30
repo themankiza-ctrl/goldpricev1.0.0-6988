@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, BellRing } from "lucide-react";
 import { useSpot, usePriceList } from "../queries/market";
 import { clock, eur, money, num } from "../lib/format";
 import { cn } from "../lib/utils";
@@ -381,12 +381,42 @@ function PriceTable() {
   );
 }
 
+/** Poziv na prijavu za cenovni alarm — ispod tabele, gde posetilac već gleda cene. */
+function AlertBanner() {
+  return (
+    <section className="mx-auto max-w-[1200px] px-6 pt-16">
+      <div className="panel rise overflow-hidden rounded-[22px] p-7 sm:p-9">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-xl">
+            <p className="num text-[11px] tracking-wider text-muted">CENOVNI ALARM</p>
+            <h2 className="display mt-2 text-[clamp(1.5rem,3vw,2rem)] font-extrabold text-cream">
+              Obavestimo vas kada cena pomeri 1%
+            </h2>
+            <p className="mt-3 text-[14px] leading-relaxed text-muted">
+              Umesto da svakog dana otvarate cenovnik, postavite prag jednom. Mejl dolazi samo kada
+              se spot zaista pomeri toliko — ili kada padne ispod cene koju sami odredite.
+            </p>
+          </div>
+          <Link
+            to="/alarm"
+            className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-gold px-7 py-3.5 text-[14.5px] font-bold text-ink lg:self-auto"
+          >
+            <BellRing className="size-4" />
+            Prijavi se za alarm
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Index() {
   return (
     <>
       <Hero />
       <BrandSlider />
       <PriceTable />
+      <AlertBanner />
     </>
   );
 }

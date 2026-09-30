@@ -84,6 +84,15 @@ export const admin = {
           .optional(),
         lockDefaultMinutes: z.number().int().min(5).max(1440).optional(),
         lockMaxTotalEur: z.number().min(100).max(1000000).optional(),
+        alertsEnabled: z.boolean().optional(),
+        alertInternalEnabled: z.boolean().optional(),
+        alertInternalTo: z.string().max(500).optional(),
+        alertInternalPct: z.number().min(0.1).max(20).optional(),
+        alertCooldownMinutes: z.number().int().min(0).max(1440).optional(),
+        alertMaxPerDay: z.number().int().min(1).max(50).optional(),
+        alertPublicEnabled: z.boolean().optional(),
+        alertFromName: z.string().min(2).max(60).optional(),
+        alertSiteUrl: z.string().url().optional(),
       }),
     )
     .handler(async ({ input }) => {

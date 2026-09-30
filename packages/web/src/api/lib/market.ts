@@ -2,6 +2,7 @@ import { desc, gte } from "drizzle-orm";
 import { db } from "../database";
 import { settings as settingsTable, spotSnapshots } from "../database/schema";
 import type { Settings, SpotSnapshot } from "../database/schema";
+import { maybeRunAlerts } from "./alerts";
 import { fetchEurRsd, fetchEurUsd, fetchXagUsd, fetchXauUsd } from "./feeds";
 import { buildSpreadContext, priceProduct, type MarketState, type SpreadContext } from "./pricing";
 import type { Product } from "../database/schema";
@@ -197,7 +198,20 @@ export async function getPricingContext(force = false): Promise<PricingContext |
     gapHold,
   });
 
-  return { snapshot, market: publishedMarket, settings: cfg, spread, status: statusFor(snapshot, cfg) };
+  const ctx: PricingContext = {
+    snapshot,
+    market: publishedMarket,
+    settings: cfg,
+    spread,
+    status: statusFor(snapshot, cfg),
+  };
+
+  // Cenovni alarmi se voze na postojećem ciklusu osvežavanja — bez zasebnog
+  // cron servisa. Fire-and-forget sa internim ograničenjem na jedan prolaz
+  // u minutu, pa nikada ne usporava odgovor.
+  maybeRunAlerts(ctx);
+
+  return ctx;
 }
 
 export function priceAll(products: Product[], ctx: PricingContext) {

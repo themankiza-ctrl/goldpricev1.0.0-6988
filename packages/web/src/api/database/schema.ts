@@ -111,6 +111,59 @@ export const priceLocks = sqliteTable("price_locks", {
     .$defaultFn(() => new Date()),
 });
 
+/**
+ * Email pretplatnici na alarm o promeni spot cene. Dvostruka potvrda
+ * (double opt-in): red se pravi kao "pending" i postaje "aktivan" tek kada
+ * korisnik klikne link iz potvrdnog mejla.
+ */
+export const alertSubscribers = sqliteTable("alert_subscribers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  /** procenat | cilj — pomeraj u procentima ili ciljna cena po gramu. */
+  kind: text("kind").notNull().default("procenat"),
+  /** Prag u procentima za kind=procenat: 1 | 2 | 5. */
+  thresholdPct: real("threshold_pct").notNull().default(1),
+  /** Ciljna prodajna cena u EUR/g za kind=cilj. */
+  targetEurPerGram: real("target_eur_per_gram"),
+  /** dole | gore | oba — u kom smeru pomeraj interesuje pretplatnika. */
+  direction: text("direction").notNull().default("oba"),
+  /** pending | aktivan | ispunjen | odjavljen */
+  status: text("status").notNull().default("pending"),
+  /** Tajni token za potvrdu pretplate i za odjavu. */
+  token: text("token").notNull().unique(),
+  /** Referentna cena za "ratchet" — posle svakog alarma se pomera na novu. */
+  refEurPerGram: real("ref_eur_per_gram"),
+  /** Anti-spam: kada je poslat poslednji alarm i koliko ih je danas. */
+  lastSentAt: integer("last_sent_at", { mode: "timestamp" }),
+  sentToday: integer("sent_today").notNull().default(0),
+  /** YYYY-MM-DD (Europe/Belgrade) za koji važi sentToday. */
+  sentDay: text("sent_day").notNull().default(""),
+  /** Odakle je pretplata došla: sajt | pocetna | admin */
+  source: text("source").notNull().default("sajt"),
+  confirmedAt: integer("confirmed_at", { mode: "timestamp" }),
+  unsubscribedAt: integer("unsubscribed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+/** Dnevnik svakog poslatog (ili neuspelog) mejla — revizija i debug. */
+export const alertLog = sqliteTable("alert_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  /** interni | kupac | potvrda | test */
+  channel: text("channel").notNull(),
+  toEmail: text("to_email").notNull(),
+  subject: text("subject").notNull(),
+  eurPerGram: real("eur_per_gram"),
+  refEurPerGram: real("ref_eur_per_gram"),
+  movePct: real("move_pct"),
+  ok: integer("ok", { mode: "boolean" }).notNull().default(true),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 /** Single-row configuration (id = 1). */
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey(),
@@ -166,6 +219,38 @@ export const settings = sqliteTable("settings", {
   lockDefaultMinutes: integer("lock_default_minutes").notNull().default(60),
   /** Max total value (EUR) a client can self-lock; above it we mark as "na upit". */
   lockMaxTotalEur: real("lock_max_total_eur").notNull().default(20000),
+
+  // --- Alarm na promenu spot cene (email) ---
+  /** Glavni prekidač: bez ovoga se ne šalje ni jedan alarm. */
+  alertsEnabled: integer("alerts_enabled", { mode: "boolean" }).notNull().default(true),
+  /** Interni alarm za operatera. */
+  alertInternalEnabled: integer("alert_internal_enabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  /** Primaoci internog alarma, zapeta kao razdvajač. */
+  alertInternalTo: text("alert_internal_to")
+    .notNull()
+    .default("dorotea4@gmail.com,themankiza@gmail.com"),
+  /** Prag internog alarma u procentima. */
+  alertInternalPct: real("alert_internal_pct").notNull().default(1),
+  /** Referentna cena internog "ratchet"-a u EUR/g. */
+  alertInternalRef: real("alert_internal_ref"),
+  alertInternalLastAt: integer("alert_internal_last_at", { mode: "timestamp" }),
+  alertInternalSentToday: integer("alert_internal_sent_today").notNull().default(0),
+  alertInternalSentDay: text("alert_internal_sent_day").notNull().default(""),
+  /** Minimalni broj minuta između dva mejla istom primaocu. */
+  alertCooldownMinutes: integer("alert_cooldown_minutes").notNull().default(60),
+  /** Maksimalno alarma dnevno po primaocu. */
+  alertMaxPerDay: integer("alert_max_per_day").notNull().default(4),
+  /** Da li je javna pretplata otvorena za kupce. */
+  alertPublicEnabled: integer("alert_public_enabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  /** Ime pošiljaoca u mejlu. */
+  alertFromName: text("alert_from_name").notNull().default("Golden Feather"),
+  /** Bazni URL sajta za linkove u mejlu (potvrda, odjava, zaključavanje). */
+  alertSiteUrl: text("alert_site_url").notNull().default("https://www.prodajazlata.com"),
+
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -174,3 +259,5 @@ export const settings = sqliteTable("settings", {
 export type Product = typeof products.$inferSelect;
 export type SpotSnapshot = typeof spotSnapshots.$inferSelect;
 export type Settings = typeof settings.$inferSelect;
+export type AlertSubscriber = typeof alertSubscribers.$inferSelect;
+export type AlertLogRow = typeof alertLog.$inferSelect;

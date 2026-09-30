@@ -9,6 +9,7 @@ import { useSpot } from "../queries/market";
 const NAV = [
   { href: "/kalkulator", label: "Kalkulator", small: true },
   { href: "/zakljucaj", label: "Zaključaj", small: true },
+  { href: "/alarm", label: "Alarm", small: true },
   { href: "/blog", label: "Blog", small: true },
   { href: "/kontakt", label: "Kontakt", small: true },
 ];

@@ -5,6 +5,7 @@ import Admin from "./pages/admin";
 import Embed from "./pages/embed";
 import Zakljucaj from "./pages/zakljucaj";
 import Kontakt from "./pages/kontakt";
+import Alarm from "./pages/alarm";
 import Blog from "./pages/blog";
 import BlogPost from "./pages/blog-post";
 import { Layout } from "./components/layout";
@@ -30,6 +31,7 @@ function App() {
               <Route path="/" component={Index} />
               <Route path="/kalkulator" component={Kalkulator} />
               <Route path="/zakljucaj" component={Zakljucaj} />
+              <Route path="/alarm" component={Alarm} />
               <Route path="/kontakt" component={Kontakt} />
               <Route path="/blog" component={Blog} />
               <Route path="/blog/:slug" component={BlogPost} />
