@@ -89,8 +89,17 @@ const BAR_PRIMARY: Record<string, keyof typeof BRAND> = {
 
 const BRAND_ORDER = ["valcambi", "argor", "heraeus", "munze"] as const;
 
+/**
+ * Large gramaže are shown as the bare bar instead of the sealed blister card,
+ * and those files carry a "-bare" suffix so a new photo never has to fight a
+ * stale CDN copy of the same filename.
+ */
+const BARE_WEIGHTS = new Set(["250g", "500g", "1000g"]);
+
 function barPhoto(brand: string, sku: string) {
-  return `/images/products/${brand}-${BAR_WEIGHT[sku]}.jpg`;
+  const weight = BAR_WEIGHT[sku];
+  const suffix = BARE_WEIGHTS.has(weight) ? "-bare" : "";
+  return `/images/products/${brand}-${weight}${suffix}.jpg`;
 }
 
 /** All four manufacturer photos of one weight, primary refinery first. */
