@@ -1,0 +1,281 @@
+---
+name: saas-multi-tenant
+description: "Multi-tenant SaaS architecture with PostgreSQL RLS isolation / Arsitektur SaaS multi-tenant dengan isolasi PostgreSQL RLS."
+author: "Roedy Rustam"
+version: "4.4.4"
+
+---
+
+# SaaS Multi-Tenant Expert (2026 Edition)
+
+[English](#english) | [Bahasa Indonesia](#bahasa-indonesia)
+
+---
+
+<a name="english"></a>
+## English
+
+### Orchestration & Integration
+- **Upstream Orchestrators**: Works under `brainstorming` and `zero-to-prod-orchestrator` (Phase 3 - Schema Design & Database Architecture) for multi-tenant data modeling.
+- **Downstream Cooperating Skills**:
+  - `database-orm-expert` — Implement tenant migrations, foreign keys, and PostgreSQL RLS policies.
+  - `supabase-security-expert` — Audit RLS rules, JWT custom claims, and service role bypass vectors.
+  - `saas-billing` — Connect workspace plans to subscription limits, dunning, and seat allowances.
+  - `payment-gateway-expert` — Provide tenant-aware checkout flows and billing portal access.
+  - `cloud-hosting-expert` — Super Admin domain isolation (`admin.yourdomain.com`) and routing.
+  - `saas-architect` — Coordinate 9-phase modernization pipeline when transforming single-tenant codebases.
+  - `session-memory-manager` — Store tenant isolation matrices and schema configuration checkpoints.
+
+### Description
+Expert guide for designing and implementing multi-tenant SaaS architectures with full tenant isolation, Supabase/PostgreSQL Row Level Security (RLS), schema-per-org patterns, RBAC, and Super Admin access controls.
+
+### Trigger Conditions
+- Building a SaaS application that serves multiple organizations (workspaces/tenants).
+- Implementing Row Level Security (RLS) policies in Supabase or PostgreSQL.
+- Designing a data model that isolates tenant data securely.
+- Implementing role-based access control (RBAC) within a tenant.
+- Building the Super Admin management panel for cross-tenant operations.
+- Choosing between shared schema vs. schema-per-org isolation strategies.
+
+### Tenant Isolation Strategies
+
+| Strategy | Isolation Level | Cost | Complexity | Best For |
+|---|---|---|---|---|
+| **Shared Schema + RLS** | Row-level | Low | Medium | Standard SaaS (< 1M tenants) |
+| **Schema per Org** | Table-level | Medium | High | Compliance-heavy (HIPAA, finance) |
+| **DB per Org** | Database-level | High | Very High | Enterprise, regulated industries |
+
+### Strategy 1: Shared Schema + RLS (Recommended for Most SaaS)
+
+#### Core Schema Design
+```sql
+-- Central workspaces (tenants) table
+CREATE TABLE workspaces (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL,
+    slug        TEXT UNIQUE NOT NULL,
+    plan        TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'enterprise')),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Users belong to multiple workspaces via memberships
+CREATE TABLE workspace_members (
+    workspace_id    UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id         UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    role            TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (workspace_id, user_id)
+);
+
+-- All tenant data has workspace_id
+CREATE TABLE projects (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id    UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name            TEXT NOT NULL,
+    created_by      UUID REFERENCES auth.users(id),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+#### Row Level Security Policies
+```sql
+-- Enable RLS on all tenant tables
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only see projects in their workspaces
+CREATE POLICY "workspace members can view projects"
+    ON projects FOR SELECT
+    USING (
+        workspace_id IN (
+            SELECT workspace_id FROM workspace_members
+            WHERE user_id = auth.uid()
+        )
+    );
+
+-- Policy: Only admins and owners can create projects
+CREATE POLICY "admins can create projects"
+    ON projects FOR INSERT
+    WITH CHECK (
+        workspace_id IN (
+            SELECT workspace_id FROM workspace_members
+            WHERE user_id = auth.uid()
+              AND role IN ('owner', 'admin')
+        )
+    );
+
+-- Policy: Super Admin can bypass RLS (service role only)
+-- ⚠️ NEVER expose service role key to frontend
+```
+
+#### Session Management & RLS Optimization
+To avoid performance bottlenecks, embed `workspace_id` and `role` directly into the user's Session JWT (Custom Claims). This allows RLS policies to check the session token directly (`auth.jwt()->>'workspace_id'`) instead of joining the `workspace_members` table on every query.
+
+#### RLS Helper Functions
+```sql
+-- Helper: Check if current user has a minimum role in a workspace
+CREATE OR REPLACE FUNCTION user_has_role(
+    p_workspace_id UUID,
+    p_min_role TEXT
+) RETURNS BOOLEAN AS $$
+DECLARE
+    role_hierarchy TEXT[] := ARRAY['viewer', 'member', 'admin', 'owner'];
+    user_role TEXT;
+BEGIN
+    SELECT role INTO user_role
+    FROM workspace_members
+    WHERE workspace_id = p_workspace_id AND user_id = auth.uid();
+
+    RETURN (
+        array_position(role_hierarchy, user_role) >=
+        array_position(role_hierarchy, p_min_role)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### Strategy 2: Schema per Org (Compliance-Heavy)
+For regulated industries requiring strict data separation:
+```sql
+-- Dynamically create a schema for each new tenant
+CREATE OR REPLACE FUNCTION create_tenant_schema(p_slug TEXT) RETURNS VOID AS $$
+BEGIN
+    EXECUTE format('CREATE SCHEMA IF NOT EXISTS tenant_%s', p_slug);
+    
+    -- Create all tenant tables in the new schema
+    EXECUTE format('
+        CREATE TABLE tenant_%s.projects (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )', p_slug);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Bypass pattern: set search_path per connection
+SET search_path TO tenant_acme, public;
+SELECT * FROM projects;  -- Reads from tenant_acme.projects only
+```
+
+### Super Admin Architecture
+
+Super Admin is a separate system that operates **across all tenants** with elevated privileges:
+
+```typescript
+// Super Admin routes are ONLY accessible at admin.yourdomain.com
+// Enforced at DNS + middleware level
+
+// middleware.ts — verify super admin domain
+if (hostname === 'admin.yourdomain.com') {
+  const session = await verifyAdminSession(req);
+  if (!session?.user.isSuperAdmin) {
+    return NextResponse.redirect('https://yourdomain.com');
+  }
+}
+```
+
+```sql
+-- Super Admin uses service role to bypass RLS
+-- admin.sql — queries bypass all RLS policies when using service role key
+
+-- Cross-tenant query (only accessible with service role)
+SELECT w.name, COUNT(wm.user_id) as member_count, w.plan
+FROM workspaces w
+LEFT JOIN workspace_members wm ON w.id = wm.workspace_id
+GROUP BY w.id
+ORDER BY member_count DESC;
+```
+
+### RBAC Implementation (TypeScript)
+```typescript
+type Role = 'owner' | 'admin' | 'member' | 'viewer';
+
+const ROLE_PERMISSIONS: Record<Role, string[]> = {
+  owner: ['*'],  // All permissions
+  admin: ['project:create', 'project:delete', 'member:invite', 'member:remove'],
+  member: ['project:create', 'project:read', 'project:update'],
+  viewer: ['project:read'],
+};
+
+function can(userRole: Role, permission: string): boolean {
+  const perms = ROLE_PERMISSIONS[userRole];
+  return perms.includes('*') || perms.includes(permission);
+}
+
+// Usage in API handler
+if (!can(currentMember.role, 'project:delete')) {
+  throw new ForbiddenError('Insufficient permissions');
+}
+```
+
+### Sovereign Execution, Token Efficiency & Invariants
+| Dimension | Sovereign Mandate & Deterministic Contract |
+| :--- | :--- |
+| **Frontier Model Cascade** | Medium / High (`Gemini 4 Argon`, `GPT-5.6 Sol Medium`, `Claude Sonnet 5.5 High`) |
+| **Availability Fallback** | `Gemini 4 Argon/Pro` -> `Gemini 3.8 Flash`; `Claude Opus 5.5` -> `Claude Opus 4.6` (Zero unhandled missing-model errors) |
+| **KV-Cache & Token Protocol** | Pin static instructions & schemas at prompt prefix (`kv-cache-prefix-optimizer`); pass surgical `CONTEXT_MAP.md` slices (<250 tokens/call) during Swarm Fan-Out |
+| **SaaT CLI & MCP Dispatch** | CLI: `vibes skill exec saas-multi-tenant <audit\|eval\|verify\|generate\|blueprint>` / MCP: `vibes_skill_dispatch`, `vibes_eval_sql`, `vibes_verify_invariants`, `vibes_verify_gate` |
+| **NFR & Anti-Slop Invariants** | P99 Query Latency < 15ms, 100% Row Level Security (RLS) coverage on multi-tenant tables, explicit B-Tree indexes on all Foreign Keys; 100% complete zero-placeholder output verified via `node scripts/check-anti-slop.js --strict` |
+
+---
+
+<a name="bahasa-indonesia"></a>
+## Bahasa Indonesia
+
+### Integrasi Orkestrasi
+- **Orkestrator Hulu**: Beroperasi di bawah arahan `brainstorming` dan `zero-to-prod-orchestrator` (Fase 3 - Desain Skema & Arsitektur Database) untuk pemodelan data multi-tenant.
+- **Skill Hilir & Kerja Sama**:
+  - `database-orm-expert` — Implementasi migrasi tenant, foreign keys, dan kebijakan RLS PostgreSQL.
+  - `supabase-security-expert` — Audit aturan RLS, custom claims JWT, dan vektor bypass service role.
+  - `saas-billing` — Menghubungkan paket workspace dengan batas langganan dan alokasi kursi (seat).
+  - `payment-gateway-expert` — Menyediakan alur checkout dan akses portal billing per tenant.
+  - `cloud-hosting-expert` — Isolasi domain Super Admin (`admin.yourdomain.com`) dan konfigurasi routing.
+  - `saas-architect` — Mengoordinasikan pipeline modernisasi 9 fase saat mentransformasi aplikasi single-tenant.
+  - `session-memory-manager` — Menyimpan matriks isolasi tenant dan checkpoint konfigurasi skema.
+
+### Deskripsi
+Panduan ahli untuk merancang dan mengimplementasikan arsitektur SaaS multi-tenant dengan isolasi tenant penuh, Row Level Security (RLS) Supabase/PostgreSQL, pola schema-per-org, RBAC, dan kontrol akses Super Admin.
+
+### Kondisi Pemicu
+- Membangun aplikasi SaaS yang melayani beberapa organisasi (workspace/tenant).
+- Mengimplementasikan kebijakan Row Level Security (RLS) di Supabase atau PostgreSQL.
+- Merancang model data yang mengisolasi data tenant dengan aman.
+- Mengimplementasikan role-based access control (RBAC) dalam tenant.
+- Membangun panel manajemen Super Admin untuk operasi lintas tenant.
+- Memilih antara shared schema vs. schema-per-org.
+
+### Strategi Isolasi Tenant
+
+| Strategi | Level Isolasi | Biaya | Kompleksitas | Terbaik Untuk |
+|---|---|---|---|---|
+| **Shared Schema + RLS** | Row-level | Rendah | Sedang | SaaS standar (< 1M tenant) |
+| **Schema per Org** | Table-level | Sedang | Tinggi | Kepatuhan ketat (HIPAA, keuangan) |
+| **DB per Org** | Database-level | Tinggi | Sangat Tinggi | Enterprise, industri teratur |
+
+### Strategi 1: Shared Schema + RLS (Direkomendasikan)
+Rancang tabel `workspaces` (tenant), `workspace_members` (keanggotaan + role), dan semua tabel data dengan kolom `workspace_id`. Terapkan RLS agar pengguna hanya dapat melihat data workspace mereka sendiri.
+
+#### Optimasi Session Management & RLS
+Untuk menghindari bottleneck performa, sematkan `workspace_id` dan `role` langsung ke dalam Session JWT pengguna (Custom Claims). Ini memungkinkan kebijakan RLS untuk memeriksa token sesi secara langsung (`auth.jwt()->>'workspace_id'`) daripada melakukan join ke tabel `workspace_members` pada setiap query.
+
+#### Fungsi Helper RLS
+Buat fungsi `user_has_role()` yang dapat digunakan kembali di seluruh kebijakan RLS untuk memeriksa apakah pengguna saat ini memiliki role minimum yang diperlukan dalam workspace tertentu.
+
+### Strategi 2: Schema per Org
+Untuk industri teratur yang membutuhkan pemisahan data ketat. Buat schema PostgreSQL terpisah untuk setiap tenant secara dinamis. Atur `search_path` per koneksi untuk mengarahkan query ke schema tenant yang benar.
+
+### Arsitektur Super Admin
+Super Admin adalah sistem terpisah yang beroperasi **di semua tenant** dengan hak istimewa yang ditingkatkan. Hanya dapat diakses di `admin.yourdomain.com` — diberlakukan di level DNS dan middleware. Menggunakan service role key Supabase untuk mem-bypass RLS dan melakukan query lintas tenant.
+
+### Implementasi RBAC
+Definisikan peta izin per role (`owner`, `admin`, `member`, `viewer`) dan fungsi `can()` helper untuk memeriksa izin dalam API handler.
+
+### Matriks Eksekusi Berdaulat, Efisiensi Token & Invarian
+| Dimensi | Mandat Berdaulat & Kontrak Deterministik |
+| :--- | :--- |
+| **Kaskade Model Frontier** | Medium / High (`Gemini 4 Argon`, `GPT-5.6 Sol Medium`, `Claude Sonnet 5.5 High`) |
+| **Invarian Fallback Ketersediaan** | `Gemini 4 Argon/Pro` -> `Gemini 3.8 Flash`; `Claude Opus 5.5` -> `Claude Opus 4.6` (Bebas gagal saat model belum tersedia/kuota penuh) |
+| **Protokol Hemat Token & KV-Cache** | Kunci instruksi & skema statis di prefix awal (`kv-cache-prefix-optimizer`); kirim potongan `CONTEXT_MAP.md` (<250 token/panggilan) saat Fan-Out |
+| **Eksekusi SaaT CLI & MCP** | CLI: `vibes skill exec saas-multi-tenant <audit\|eval\|verify\|generate\|blueprint>` / MCP: `vibes_skill_dispatch`, `vibes_eval_sql`, `vibes_verify_invariants`, `vibes_verify_gate` |
+| **Invarian NFR & Anti-Slop** | Latensi Query P99 < 15ms, cakupan Row Level Security (RLS) 100% pada tabel multi-tenant, indeks B-Tree eksplisit pada seluruh Foreign Key; kode 100% tuntas tanpa placeholder diverifikasi melalui `node scripts/check-anti-slop.js --strict` |
+
+---

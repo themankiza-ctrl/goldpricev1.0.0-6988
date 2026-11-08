@@ -1,0 +1,250 @@
+---
+name: saas-architect
+description: "Master SaaS orchestrator: MVP launches (0 to 1) and transformation / Master orkestrator SaaS: peluncuran MVP (0 ke 1) dan transformasi."
+author: "Roedy Rustam"
+version: "4.4.4"
+
+---
+
+# SaaS Architect (MVP Launcher & Transformation Master)
+
+[English](#english) | [Bahasa Indonesia](#bahasa-indonesia)
+
+---
+
+<a name="english"></a>
+## English
+
+### Orchestration & Integration
+- **Upstream Orchestrators**: Works under `brainstorming` and `zero-to-prod-orchestrator` (Phase 1-8 Master Lifecycle) as the central SaaS commercialization engine.
+- **Downstream Cooperating Skills**:
+  - `saas-multi-tenant` — Workspaces, RLS policies, tenant schema isolation, and super-admin routing.
+  - `saas-billing` — Subscription state machines, Stripe/Polar/Midtrans checkout, and webhook sync.
+  - `authentication-identity-expert` — Multi-tenant identity, RBAC, OAuth2/PKCE, and session tokens.
+  - `cloud-hosting-expert` — Subdomain routing and isolation (`app.*`, `admin.*`).
+  - `production-ready-hardener` — Launch readiness verification and security audits.
+  - `prd-architect` — Generate PRD, ERD, and continuous architecture documentation.
+  - `session-memory-manager` — Persist SaaS lifecycle blueprints and tenant state checkpoints.
+  - `senior-frontend` — Enforce modern UI/UX standards across app shells and marketing pages.
+
+### Description
+The **SaaS Architect** is the master lifecycle orchestrator for building commercial SaaS platforms. It operates in two specialized modes:
+- **Mode A (Greenfield MVP 0-to-1)**: Validating ideas, rapid stack selection, multi-entry points architecture, authentication, billing setup, and launch checklist.
+- **Mode B (App Modernization 1-to-N)**: Systematically converting existing single-tenant or internal applications into enterprise-grade multi-tenant SaaS platforms using a 9-phase transformation pipeline.
+
+### Trigger Conditions
+- Planning or launching a brand-new SaaS product from scratch.
+- Modernizing or converting an existing web app into a commercial SaaS.
+- Setting up multi-tenancy, workspace isolation, team management, or feature gating.
+- Conducting a technical audit of an existing SaaS architecture.
+
+---
+
+### Mode A: Greenfield SaaS MVP (0 to 1)
+
+#### 1. Idea Validation & Scoping
+- Define the exact customer problem in one sentence.
+- Verify 3+ pre-commitments or letters of intent before deep coding.
+- Keep MVP scope tight (target 4-6 weeks to launch).
+
+#### 2. Modern SaaS Stack Blueprint (2026)
+- **Frontend & App**: Next.js 15 App Router + React 19 + TypeScript.
+- **Styling & UI**: Tailwind CSS v4 + Base UI / shadcn/ui primitives.
+- **Data Layer**: PostgreSQL (Neon Serverless / Supabase) via Drizzle ORM or Prisma 6.
+- **Auth**: Clerk, Auth.js v5, or Supabase Auth with OAuth2 PKCE.
+- **Billing**: Stripe / Midtrans / DOKU via webhook-driven synchronization.
+- **Email & Jobs**: Resend + React Email; BullMQ / Trigger.dev v3 for background jobs.
+- **Deployment**: Vercel / Cloudflare Edge with zero-config CI/CD.
+
+#### 3. Architecture & Entry Points Isolation
+Apply the multiple-entry-points architecture (guided by `cloud-hosting-expert`) to segregate responsibilities:
+- **Public Entry (`app.example.com` or `example.com`)**: Marketing landing, pricing, documentation, and blog.
+- **Tenant Dashboard (`app.example.com/dashboard` or `[tenant].example.com`)**: Authenticated customer workspace.
+- **Super Admin Subdomain (`admin.example.com`)**: Dedicated subdomain strictly isolated from customer tenant routes for global metrics, tenant provisioning, user moderation, and feature override controls.
+
+#### 4. Pre-Launch Quality Gate
+- Authentication and session validation (Edge JWT + Redis caching).
+- Webhook signature validation active for all billing events.
+- Error tracking configured (Sentry) and rate limiting on API routes.
+- Mandatory Legal & Privacy Trio: Terms & Conditions (`/terms`), Privacy Policy (`/privacy`), and User Data Deletion (`/delete-account` or `/data-deletion`), alongside 2-3 pricing tiers with trial workflows.
+
+---
+
+### Mode B: SaaS Transformation & Modernization (1 to N)
+
+For existing codebases, execute the structured 9-phase transformation pipeline:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                   SAAS TRANSFORMATION PIPELINE                   │
+│  Phase 1: Discovery & Architecture Audit (Scanner script)        │
+│  Phase 2: Multi-Tenancy & Data Isolation (saas-multi-tenant)    │
+│  Phase 3: Identity & RBAC Management (authentication-identity)  │
+│  Phase 4: Billing, Subscriptions & Webhooks (saas-billing)      │
+│  Phase 5: Workspace & Team Collaboration (Invites, Roles)        │
+│  Phase 6: Frontend App Shell & Multi-Entry Points               │
+│  Phase 7: Feature Gating, Limits & Metering                     │
+│  Phase 8: Production Hardening, Testing & Security Audit        │
+│  Phase 9: Deployment, Multi-Tenant Monitoring & Launch          │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+#### Transformation Scanner
+Run `python scripts/saas_transformation_scanner.py` to inspect the legacy codebase. It scores readiness across:
+1. Multi-Tenancy Readiness (Foreign keys, tenant isolation)
+2. Auth & RBAC Maturity
+3. Billing & Subscription hooks
+4. Feature Gating presence
+
+#### Core Modernization Principles
+- **Data Isolation**: Refer to `saas-multi-tenant` for Shared Schema RLS or Schema-per-tenant patterns. Do not write raw duplicate schemas.
+- **Subscription State Machine**: Refer to `saas-billing` for webhook handling, invoice synchronization, and dunning cycles.
+- **Feature Gating**: Implement hierarchical checks (System Flag -> Plan Tier -> Tenant Addon -> User Role) as detailed in `references/feature_gating_patterns.md`.
+
+---
+
+### 🎨 Automatic Visual Assets Generation Mandate (CRITICAL)
+When initializing or scaffolding any new SaaS application:
+1. Automatically invoke `generate_image` to create a production-quality application logo matching the brand identity.
+2. Use this asset immediately as the navbar logo, browser favicon (`favicon.ico`), and Open Graph social banner (`og:image`). Never use placeholder icons.
+
+### 📄 Standard Pages & Legal Compliance Mandate
+Every SaaS application must scaffold complete, functional implementations for:
+- Landing Page (Hero, Features, Social Proof, Pricing, FAQ)
+- Authentication (Sign In, Sign Up, Password Reset, Magic Link)
+- Onboarding Wizard (<5 minutes to first value)
+- Settings (Profile, Workspace, Team Members, Billing / Plans, API Keys)
+- Mandatory Legal & Privacy Trio: Terms of Service (`/terms`), Privacy Policy (`/privacy-policy` or `/privacy`), and User Data Deletion (`/delete-account` or `/data-deletion`)
+- Super Admin Panel on dedicated subdomain (`admin.example.com`)
+
+---
+
+#### Multi-Tenant Subdomain & Entry-Point Isolation Middleware (Next.js 15 / Edge)
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+
+export interface TenantRoutingConfig {
+  rootDomain: string;
+  adminSubdomain: string;
+}
+
+export function routeMultiEntrySaaS(req: NextRequest, config: TenantRoutingConfig): NextResponse {
+  const host = req.headers.get('host') ?? config.rootDomain;
+  const hostname = host.split(':')[0];
+  const url = req.nextUrl.clone();
+
+  if (hostname === `${config.adminSubdomain}.${config.rootDomain}`) {
+    url.pathname = `/super-admin${url.pathname === '/' ? '' : url.pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  if (hostname !== config.rootDomain && hostname.endsWith(`.${config.rootDomain}`)) {
+    const tenantSlug = hostname.replace(`.${config.rootDomain}`, '');
+    url.pathname = `/tenant/${tenantSlug}${url.pathname}`;
+    const res = NextResponse.rewrite(url);
+    res.headers.set('x-tenant-slug', tenantSlug);
+    return res;
+  }
+
+  return NextResponse.next();
+}
+```
+
+#### Hierarchical Feature Gating Evaluator
+```typescript
+export interface EntitlementContext {
+  systemFlags: Record<string, boolean>;
+  planFeatures: ReadonlySet<string>;
+  tenantAddons: ReadonlySet<string>;
+  userRolePermissions: ReadonlySet<string>;
+}
+
+export function evaluateFeatureAccess(featureKey: string, ctx: EntitlementContext): boolean {
+  if (ctx.systemFlags[featureKey] === false) {
+    return false;
+  }
+  const hasTenantEntitlement = ctx.planFeatures.has(featureKey) || ctx.tenantAddons.has(featureKey);
+  if (!hasTenantEntitlement) {
+    return false;
+  }
+  return ctx.userRolePermissions.has(featureKey);
+}
+```
+
+### Sovereign Execution, Token Efficiency & Invariants
+| Dimension | Sovereign Mandate & Deterministic Contract |
+| :--- | :--- |
+| **Frontier Model Cascade** | Medium / High (`GPT-5.6 Sol Medium`, `Gemini 4 Argon`, `Claude Sonnet 5.5 High`, `Grok 4.7 High Fast`) |
+| **Availability Fallback** | `Gemini 4 Argon/Pro` -> `Gemini 3.8 Flash`; `Claude Opus 5.5` -> `Claude Opus 4.6` (Zero unhandled missing-model errors) |
+| **KV-Cache & Token Protocol** | Pin static instructions & schemas at prompt prefix (`kv-cache-prefix-optimizer`); pass surgical `CONTEXT_MAP.md` slices (<250 tokens/call) during Swarm Fan-Out |
+| **SaaT CLI & MCP Dispatch** | CLI: `vibes skill exec saas-architect <audit\|eval\|verify\|generate\|blueprint>` / MCP: `vibes_skill_dispatch`, `vibes_ast_query`, `vibes_compile_cache`, `vibes_optimize_budget`, `vibes_verify_gate` |
+| **NFR & Anti-Slop Invariants** | P99 API Gateway Latency < 85ms, OpenAPI 3.1 / TypeSpec strict schema parity, RFC 9457 Problem Details error contracts, Idempotency-Key enforcement; 100% complete zero-placeholder output verified via `node scripts/check-anti-slop.js --strict` |
+
+---
+
+
+---
+
+<a name="bahasa-indonesia"></a>
+## Bahasa Indonesia
+
+### Integrasi Orkestrasi
+- **Orkestrator Hulu**: Beroperasi di bawah arahan `brainstorming` dan `zero-to-prod-orchestrator` (Master Lifecycle Fase 1-8) sebagai mesin komersialisasi SaaS utama.
+- **Skill Hilir & Kerja Sama**:
+  - `saas-multi-tenant` — Workspace, kebijakan RLS, isolasi skema tenant, dan routing super-admin.
+  - `saas-billing` — State machine langganan, checkout Stripe/Polar/Midtrans, dan sinkronisasi webhook.
+  - `authentication-identity-expert` — Identitas multi-tenant, RBAC, OAuth2/PKCE, dan token sesi.
+  - `cloud-hosting-expert` — Routing dan isolasi subdomain (`app.*`, `admin.*`).
+  - `production-ready-hardener` — Verifikasi kesiapan peluncuran dan audit keamanan.
+  - `prd-architect` — Pembuatan PRD, ERD, dan dokumentasi arsitektur kontinu.
+  - `session-memory-manager` — Menyimpan cetak biru siklus SaaS dan checkpoint status tenant.
+  - `senior-frontend` — Menerapkan standar modern UI/UX pada app shell dan landing page.
+
+### Deskripsi
+**SaaS Architect** adalah orkestrator siklus hidup utama untuk membangun platform SaaS komersial. Beroperasi dalam dua mode:
+- **Mode A (Greenfield MVP 0 ke 1)**: Validasi ide, pemilihan tech stack kilat, arsitektur multi-entry points, autentikasi, billing, dan checklist peluncuran.
+- **Mode B (Modernisasi Aplikasi 1 ke N)**: Mentransformasi aplikasi single-tenant atau internal yang sudah ada menjadi SaaS multi-tenant enterprise menggunakan pipeline 9 fase terstruktur.
+
+### Kondisi Pemicu
+- Membangun produk SaaS baru dari awal.
+- Memodernisasi atau mengubah aplikasi web biasa menjadi SaaS komersial.
+- Mengonfigurasi multi-tenancy, isolasi ruang kerja (workspace), manajemen tim, atau feature gating.
+- Melakukan audit arsitektur teknis SaaS.
+
+---
+
+### Mode A: SaaS MVP dari Nol (0 ke 1)
+1. **Validasi Ide**: Rumuskan masalah dalam satu kalimat, validasi dengan 3+ komitmen bayar sebelum mulai coding.
+2. **Tech Stack Modern (2026)**: Next.js 15 App Router, Tailwind CSS v4, PostgreSQL (Neon/Supabase) via Drizzle/Prisma, Clerk/Auth.js, Stripe/Midtrans/DOKU, Resend, Vercel.
+3. **Isolasi Entry Point**: Pisahkan landing page publik, dashboard penyewa (tenant), dan **Dashboard Super Admin** pada subdomain terpisah (`admin.example.com`).
+4. **Gerbang Kualitas Pra-Rilis**: Sesi login teroptimasi (JWT + Redis), webhook billing tervalidasi, Sentry aktif, rate limiting, halaman harga 2-3 tier, serta pemenuhan Trio Hukum & Privasi (Syarat & Ketentuan, Kebijakan Privasi, dan Hapus Data).
+
+---
+
+### Mode B: Transformasi & Modernisasi SaaS (1 ke N)
+Gunakan pipeline 9 fase terstruktur:
+1. Audit arsitektur & jalankan `python scripts/saas_transformation_scanner.py`.
+2. Fondasi multi-tenancy (merujuk ke `saas-multi-tenant`).
+3. Autentikasi terpusat & RBAC (merujuk ke `authentication-identity-expert`).
+4. Mesin billing & siklus langganan (merujuk ke `saas-billing`).
+5. Manajemen tim & undangan workspace.
+6. Shell frontend & pemisahan entry point.
+7. Feature gating berjenjang (`references/feature_gating_patterns.md`).
+8. Pengujian E2E & hardening keamanan.
+9. Rilis & pemantauan multi-tenant.
+
+---
+
+### 🎨 Mandat Pembuatan Aset Visual Otomatis (KRITIS)
+Gunakan tool `generate_image` secara otomatis untuk membuat logo aplikasi kustom saat inisialisasi aplikasi. Pasang logo tersebut sebagai logo navbar, favicon (`favicon.ico`), dan gambar Open Graph (`og:image`). Dilarang memakai placeholder.
+
+### Matriks Eksekusi Berdaulat, Efisiensi Token & Invarian
+| Dimensi | Mandat Berdaulat & Kontrak Deterministik |
+| :--- | :--- |
+| **Kaskade Model Frontier** | Medium / High (`GPT-5.6 Sol Medium`, `Gemini 4 Argon`, `Claude Sonnet 5.5 High`, `Grok 4.7 High Fast`) |
+| **Invarian Fallback Ketersediaan** | `Gemini 4 Argon/Pro` -> `Gemini 3.8 Flash`; `Claude Opus 5.5` -> `Claude Opus 4.6` (Bebas gagal saat model belum tersedia/kuota penuh) |
+| **Protokol Hemat Token & KV-Cache** | Kunci instruksi & skema statis di prefix awal (`kv-cache-prefix-optimizer`); kirim potongan `CONTEXT_MAP.md` (<250 token/panggilan) saat Fan-Out |
+| **Eksekusi SaaT CLI & MCP** | CLI: `vibes skill exec saas-architect <audit\|eval\|verify\|generate\|blueprint>` / MCP: `vibes_skill_dispatch`, `vibes_ast_query`, `vibes_compile_cache`, `vibes_optimize_budget`, `vibes_verify_gate` |
+| **Invarian NFR & Anti-Slop** | Latensi P99 API < 85ms, paritas skema ketat OpenAPI 3.1 / TypeSpec, kontrak error RFC 9457 Problem Details, penegakan Idempotency-Key; kode 100% tuntas tanpa placeholder diverifikasi melalui `node scripts/check-anti-slop.js --strict` |
+
+---
